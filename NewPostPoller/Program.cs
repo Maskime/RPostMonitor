@@ -19,16 +19,7 @@ namespace RedditClientTest
                 .ConfigureServices(((context, services) =>
                 {
                     services.AddHostedService<RGoddessesPoller>();
-                    IConfigurationSection applicationConfig = context.Configuration.GetSection(@"application");
-                    var configuration = applicationConfig.Get<ApplicationConfiguration>();
-                    services.Configure<ApplicationConfiguration>(applicationConfig);
-                    var redditConfig = configuration.Reddit;
-                    var webAgentPool = new RedditSharp.RefreshTokenWebAgentPool(redditConfig.ClientId, redditConfig.ClientSecret, redditConfig.RedirectURI)
-                    {
-                        DefaultRateLimitMode = RedditSharp.RateLimitMode.Burst,
-                        DefaultUserAgent = @"RGodessesClassifier (by MaxouMask)"
-                    };
-                    services.AddSingleton(webAgentPool);
+                    services.Configure<ApplicationConfiguration>(context.Configuration.GetSection(@"application"));
 
                 }))
                 .ConfigureLogging((context, logging) =>

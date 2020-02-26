@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RedditClientTest", "RedditClientTest\RedditClientTest.csproj", "{9348772E-C1CE-434A-86C7-BA3DB48B2BA1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewPostPoller", "NewPostPoller\NewPostPoller.csproj", "{9348772E-C1CE-434A-86C7-BA3DB48B2BA1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
