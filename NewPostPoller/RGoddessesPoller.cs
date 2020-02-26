@@ -14,11 +14,9 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
 using RedditSharp;
 using RedditSharp.Things;
 
@@ -28,30 +26,26 @@ namespace RedditClientTest
     {
         private readonly ILogger<RGoddessesPoller> logger;
         private readonly IHostApplicationLifetime applicationLifetime;
-        private readonly RefreshTokenWebAgentPool agentPool;
         private readonly ApplicationConfiguration appConfig;
 
         public RGoddessesPoller(
             ILogger<RGoddessesPoller> logger,
             IHostApplicationLifetime applicationLifetime,
-            IOptions<ApplicationConfiguration> appConfig,
-            RefreshTokenWebAgentPool agentPool)
+            IOptions<ApplicationConfiguration> appConfig)
         {
             this.logger = logger;
             this.applicationLifetime = applicationLifetime;
-            this.agentPool = agentPool;
             this.appConfig = appConfig.Value;
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
             logger.LogDebug(@"StartAsync called");
             applicationLifetime.ApplicationStarted.Register(OnStarted);
             applicationLifetime.ApplicationStopped.Register(OnStopped);
             applicationLifetime.ApplicationStopping.Register(OnStopping);
             logger.LogDebug($"Configuration values [{appConfig.Name}]");
-            StartPolling(cancellationToken);
-            return Task.CompletedTask;
+            await StartPolling(cancellationToken);
         }
 
         private async Task StartPolling(CancellationToken cancellationToken)
@@ -61,30 +55,12 @@ namespace RedditClientTest
                 redditConfig.ClientSecret, redditConfig.RedirectURI);
             //This will check if the access token is about to expire before each request and automatically request a new one for you
             //"false" means that it will NOT load the logged in user profile so reddit.User will be null
-            var reddit = new Reddit(webAgent, false);
-            Subreddit subreddit = await reddit.GetSubredditAsync("/r/AskReddit");
-            logger.LogDebug("Creating stream");
+            var reddit = new Reddit(webAgent, true);
+            Subreddit subreddit = await reddit.GetSubredditAsync("/r/goddesses");
             ListingStream<Post> postStream = subreddit.GetPosts(Subreddit.Sort.New)
-                                                         .Stream();
-            logger.LogDebug("Subscription");
+                .Stream();
             postStream.Subscribe(HandlingPost);
-            logger.LogDebug("ENumeration");
             await postStream.Enumerate(cancellationToken);
-            // while (postStream.GetEnumerator().MoveNext())
-            // {
-            //     HandlingPost(postStream.GetEnumerator().Current);
-            // }
-            // logger.LogDebug("outside while loop");
-        }
-
-        private void OnCompleted()
-        {
-            throw new NotImplementedException();
-        }
-
-        private void OnError(Exception obj)
-        {
-            throw new NotImplementedException();
         }
 
         private void HandlingPost(Post post)
