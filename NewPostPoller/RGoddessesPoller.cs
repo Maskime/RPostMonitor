@@ -14,9 +14,11 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using RedditSharp;
 using RedditSharp.Things;
 
@@ -58,7 +60,7 @@ namespace RedditClientTest
             var reddit = new Reddit(webAgent, true);
             Subreddit subreddit = await reddit.GetSubredditAsync("/r/goddesses");
             ListingStream<Post> postStream = subreddit.GetPosts(Subreddit.Sort.New)
-                .Stream();
+                                                      .Stream();
             postStream.Subscribe(HandlingPost);
             await postStream.Enumerate(cancellationToken);
         }
