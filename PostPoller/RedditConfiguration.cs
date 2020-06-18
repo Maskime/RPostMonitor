@@ -8,15 +8,16 @@
 // 
 // ************************************************************************************************
 
-using Common.Config;
-
-namespace PostPoller.Config
+namespace PostPoller
 {
-    public class ApplicationConfiguration:IApplicationConfiguration
+    public class RedditConfiguration
     {
-        public string Name { get; set; }
-        public IRedditConfiguration Reddit { get; set; }
-        
-        public string DownloadDir { get; set; }
+        public string ClientId { get; set; }
+        public string ClientSecret { get; set; }
+        public string RedirectURI { get; set; }
+
+        public string Username { get; set; }
+
+        public string UserPassword { get; set; }
     }
 }
