@@ -11,10 +11,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Common.Config;
 using Common.Model.Repositories;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RedditSharp;
 using RedditSharp.Things;
 
@@ -24,20 +24,20 @@ namespace PostPoller
     {
         private readonly ILogger<RGoddessesPoller> _logger;
         private readonly IHostApplicationLifetime _applicationLifetime;
-        private readonly IApplicationConfiguration _appConfig;
+        private readonly PollerConfiguration _appConfig;
         private IMonitoredPostRepository _monitoredPostRepository;
 
         public RGoddessesPoller(
             ILogger<RGoddessesPoller> logger,
             IHostApplicationLifetime applicationLifetime,
-            IApplicationConfiguration appConfig
-            // , IMonitoredPostRepository monitoredPostRepository
+            IOptions<PollerConfiguration> config,
+            IMonitoredPostRepository monitoredPostRepository
             )
         {
-            this._logger = logger;
-            this._applicationLifetime = applicationLifetime;
-            this._appConfig = appConfig;
-            // _monitoredPostRepository = monitoredPostRepository;
+            _logger = logger;
+            _applicationLifetime = applicationLifetime;
+            _appConfig = config.Value;
+            _monitoredPostRepository = monitoredPostRepository;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -52,7 +52,7 @@ namespace PostPoller
 
         private async Task StartPolling(CancellationToken cancellationToken)
         {
-            IRedditConfiguration redditConfig = _appConfig.Reddit;
+            RedditConfiguration redditConfig = _appConfig.Reddit;
             var webAgent = new BotWebAgent(redditConfig.Username, redditConfig.UserPassword, redditConfig.ClientId,
                 redditConfig.ClientSecret, redditConfig.RedirectURI);
             //This will check if the access token is about to expire before each request and automatically request a new one for you
@@ -67,15 +67,15 @@ namespace PostPoller
 
         private void HandlingPost(Post post)
         {
-            // _monitoredPostRepository.Insert(new MonitoredPost
-            // {
-            //     Author = post.AuthorName,
-            //     CreatedAt = DateTime.Now,
-            //     FetchedAt = post.FetchedAt,
-            //     Permalink = post.Permalink.ToString(),
-            //     RedditId = post.Id,
-            //     Url = post.Url.ToString()
-            // });
+            _monitoredPostRepository.Insert(new MonitoredPost
+            {
+                Author = post.AuthorName,
+                CreatedAt = DateTime.Now,
+                FetchedAt = post.FetchedAt,
+                Permalink = post.Permalink.ToString(),
+                RedditId = post.Id,
+                Url = post.Url.ToString()
+            });
             _logger.LogDebug($"Post : [{post.Title} at {post.CreatedUTC}]");
         }
 
