@@ -1,8 +1,12 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewPostPoller", "NewPostPoller\NewPostPoller.csproj", "{9348772E-C1CE-434A-86C7-BA3DB48B2BA1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostPoller", "PostPoller\PostPoller.csproj", "{9348772E-C1CE-434A-86C7-BA3DB48B2BA1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataAccess", "DataAccess\DataAccess.csproj", "{670E03E6-EED9-4E6E-A0D9-F58B0B91B2AF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{9614D5C3-ACAE-4CA9-AF73-6A3164E2F8A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bootstrap", "Bootstrap\Bootstrap.csproj", "{35169B88-D1EC-4A79-A9AF-2A6E7178B950}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -18,5 +22,13 @@ Global
 		{670E03E6-EED9-4E6E-A0D9-F58B0B91B2AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{670E03E6-EED9-4E6E-A0D9-F58B0B91B2AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{670E03E6-EED9-4E6E-A0D9-F58B0B91B2AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9614D5C3-ACAE-4CA9-AF73-6A3164E2F8A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9614D5C3-ACAE-4CA9-AF73-6A3164E2F8A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9614D5C3-ACAE-4CA9-AF73-6A3164E2F8A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9614D5C3-ACAE-4CA9-AF73-6A3164E2F8A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35169B88-D1EC-4A79-A9AF-2A6E7178B950}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35169B88-D1EC-4A79-A9AF-2A6E7178B950}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35169B88-D1EC-4A79-A9AF-2A6E7178B950}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35169B88-D1EC-4A79-A9AF-2A6E7178B950}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

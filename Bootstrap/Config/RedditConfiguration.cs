@@ -8,11 +8,18 @@
 // 
 // ************************************************************************************************
 
-namespace RedditClientTest
+using Common.Config;
+
+namespace PostPoller.Config
 {
-    public class ApplicationConfiguration
+    public class RedditConfiguration:IRedditConfiguration
     {
-        public string Name { get; set; }
-        public RedditConfiguration Reddit { get; set; }
+        public string ClientId { get; set; }
+        public string ClientSecret { get; set; }
+        public string RedirectURI { get; set; }
+
+        public string Username { get; set; }
+
+        public string UserPassword { get; set; }
     }
 }

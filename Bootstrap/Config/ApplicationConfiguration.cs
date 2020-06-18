@@ -8,14 +8,15 @@
 // 
 // ************************************************************************************************
 
-namespace RedditClientTest
-{
-    public class RedditConfiguration
-    {
-        public string ClientId { get; set; }
-        public string ClientSecret { get; set; }
-        public string RedirectURI { get; set; }
+using Common.Config;
 
-        public string Username { get; set; }
+namespace PostPoller.Config
+{
+    public class ApplicationConfiguration:IApplicationConfiguration
+    {
+        public string Name { get; set; }
+        public IRedditConfiguration Reddit { get; set; }
+        
+        public string DownloadDir { get; set; }
     }
 }
