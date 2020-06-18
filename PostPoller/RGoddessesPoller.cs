@@ -9,51 +9,51 @@
 // ************************************************************************************************
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
+using Common.Config;
+using Common.Model.Repositories;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-
 using RedditSharp;
 using RedditSharp.Things;
 
-namespace RedditClientTest
+namespace PostPoller
 {
     public class RGoddessesPoller : IHostedService
     {
-        private readonly ILogger<RGoddessesPoller> logger;
-        private readonly IHostApplicationLifetime applicationLifetime;
-        private readonly ApplicationConfiguration appConfig;
+        private readonly ILogger<RGoddessesPoller> _logger;
+        private readonly IHostApplicationLifetime _applicationLifetime;
+        private readonly IApplicationConfiguration _appConfig;
+        private IMonitoredPostRepository _monitoredPostRepository;
 
         public RGoddessesPoller(
             ILogger<RGoddessesPoller> logger,
             IHostApplicationLifetime applicationLifetime,
-            IOptions<ApplicationConfiguration> appConfig)
+            IApplicationConfiguration appConfig
+            // , IMonitoredPostRepository monitoredPostRepository
+            )
         {
-            this.logger = logger;
-            this.applicationLifetime = applicationLifetime;
-            this.appConfig = appConfig.Value;
+            this._logger = logger;
+            this._applicationLifetime = applicationLifetime;
+            this._appConfig = appConfig;
+            // _monitoredPostRepository = monitoredPostRepository;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            logger.LogDebug(@"StartAsync called");
-            applicationLifetime.ApplicationStarted.Register(OnStarted);
-            applicationLifetime.ApplicationStopped.Register(OnStopped);
-            applicationLifetime.ApplicationStopping.Register(OnStopping);
-            logger.LogDebug($"Configuration values [{appConfig.Name}]");
+            _logger.LogDebug(@"StartAsync called");
+            _applicationLifetime.ApplicationStarted.Register(OnStarted);
+            _applicationLifetime.ApplicationStopped.Register(OnStopped);
+            _applicationLifetime.ApplicationStopping.Register(OnStopping);
+            _logger.LogDebug($"Configuration values [{_appConfig.Name}]");
             await StartPolling(cancellationToken);
         }
 
         private async Task StartPolling(CancellationToken cancellationToken)
         {
-            RedditConfiguration redditConfig = appConfig.Reddit;
-            var webAgent = new BotWebAgent(redditConfig.Username, "***REMOVED***", redditConfig.ClientId,
+            IRedditConfiguration redditConfig = _appConfig.Reddit;
+            var webAgent = new BotWebAgent(redditConfig.Username, redditConfig.UserPassword, redditConfig.ClientId,
                 redditConfig.ClientSecret, redditConfig.RedirectURI);
             //This will check if the access token is about to expire before each request and automatically request a new one for you
             //"false" means that it will NOT load the logged in user profile so reddit.User will be null
@@ -67,27 +67,36 @@ namespace RedditClientTest
 
         private void HandlingPost(Post post)
         {
-            logger.LogDebug($"Post : [{post.Title} at {post.CreatedUTC}]");
+            // _monitoredPostRepository.Insert(new MonitoredPost
+            // {
+            //     Author = post.AuthorName,
+            //     CreatedAt = DateTime.Now,
+            //     FetchedAt = post.FetchedAt,
+            //     Permalink = post.Permalink.ToString(),
+            //     RedditId = post.Id,
+            //     Url = post.Url.ToString()
+            // });
+            _logger.LogDebug($"Post : [{post.Title} at {post.CreatedUTC}]");
         }
 
         private void OnStopping()
         {
-            logger.LogInformation($"Stopping Poller");
+            _logger.LogInformation($"Stopping Poller");
         }
 
         private void OnStopped()
         {
-            logger.LogInformation($"Poller Stopped");
+            _logger.LogInformation($"Poller Stopped");
         }
 
         private void OnStarted()
         {
-            logger.LogInformation($"Poller Started");
+            _logger.LogInformation($"Poller Started");
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            logger.LogDebug(@"StopAsync called");
+            _logger.LogDebug(@"StopAsync called");
             return Task.CompletedTask;
         }
     }
