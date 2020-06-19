@@ -19,6 +19,7 @@
     <ItemGroup>
       <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
       <ProjectReference Include="..\PostPoller\PostPoller.csproj" />
+      <ProjectReference Include="..\PostUpdater\PostUpdater.csproj" />
     </ItemGroup>
 
     <ItemGroup>

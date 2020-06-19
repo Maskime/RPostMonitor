@@ -8,10 +8,12 @@
 // 
 // ************************************************************************************************
 
-namespace PostPoller
+namespace DataAccess.Reddit
 {
     public class RedditConfiguration
     {
+        public const string ConfigKey = "Reddit";
+
         public string ClientId { get; set; }
         public string ClientSecret { get; set; }
         public string RedirectURI { get; set; }
