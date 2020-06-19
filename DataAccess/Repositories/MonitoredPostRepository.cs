@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using Common.Model.Document;
 using Common.Model.Repositories;
+using Common.Reddit;
 using DataAccess.Documents;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
@@ -33,6 +35,18 @@ namespace DataAccess.Repositories
                 RedditId = monitoredPost.RedditId,
                 Url = monitoredPost.Url
             });
+        }
+
+        public List<IMonitoredPost> FindPostWithLastFetchedOlderThan(int nbSeconds)
+        {
+            var dateTimeOffset = DateTimeOffset.Now;
+            var maxLastFetch = dateTimeOffset.AddSeconds(nbSeconds * -1);
+            
+            return new List<IMonitoredPost>(_posts
+                .Find(post =>
+                    post.FetchedAt <= maxLastFetch
+                )
+                .ToList());
         }
     }
 }

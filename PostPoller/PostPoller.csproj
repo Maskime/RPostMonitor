@@ -6,7 +6,7 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="3.1.5" />
-        <PackageReference Include="RedditSharp" Version="2.0.0-CI00075" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="3.1.5" />
     </ItemGroup>
 
     <ItemGroup>
