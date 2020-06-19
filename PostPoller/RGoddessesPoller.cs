@@ -12,11 +12,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Common.Model.Repositories;
+using Common.Reddit;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using RedditSharp;
-using RedditSharp.Things;
 
 namespace PostPoller
 {
@@ -25,19 +24,22 @@ namespace PostPoller
         private readonly ILogger<RGoddessesPoller> _logger;
         private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly PollerConfiguration _appConfig;
-        private IMonitoredPostRepository _monitoredPostRepository;
+        private readonly IMonitoredPostRepository _monitoredPostRepository;
+        private readonly IRedditWrapper _redditWrapper;
 
         public RGoddessesPoller(
             ILogger<RGoddessesPoller> logger,
             IHostApplicationLifetime applicationLifetime,
             IOptions<PollerConfiguration> config,
-            IMonitoredPostRepository monitoredPostRepository
+            IMonitoredPostRepository monitoredPostRepository,
+            IRedditWrapper redditWrapper
             )
         {
             _logger = logger;
             _applicationLifetime = applicationLifetime;
             _appConfig = config.Value;
             _monitoredPostRepository = monitoredPostRepository;
+            _redditWrapper = redditWrapper;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -46,37 +48,26 @@ namespace PostPoller
             _applicationLifetime.ApplicationStarted.Register(OnStarted);
             _applicationLifetime.ApplicationStopped.Register(OnStopped);
             _applicationLifetime.ApplicationStopping.Register(OnStopping);
-            _logger.LogDebug($"Configuration values [{_appConfig.Name}]");
             await StartPolling(cancellationToken);
         }
 
         private async Task StartPolling(CancellationToken cancellationToken)
         {
-            RedditConfiguration redditConfig = _appConfig.Reddit;
-            var webAgent = new BotWebAgent(redditConfig.Username, redditConfig.UserPassword, redditConfig.ClientId,
-                redditConfig.ClientSecret, redditConfig.RedirectURI);
-            //This will check if the access token is about to expire before each request and automatically request a new one for you
-            //"false" means that it will NOT load the logged in user profile so reddit.User will be null
-            var reddit = new Reddit(webAgent, true);
-            Subreddit subreddit = await reddit.GetSubredditAsync("/r/goddesses");
-            ListingStream<Post> postStream = subreddit.GetPosts(Subreddit.Sort.New)
-                                                      .Stream();
-            postStream.Subscribe(HandlingPost);
-            await postStream.Enumerate(cancellationToken);
+            await _redditWrapper.ListenToNewPosts("/r/goddesses", HandlingPost);
         }
 
-        private void HandlingPost(Post post)
+        private void HandlingPost(IRedditPost post)
         {
             _monitoredPostRepository.Insert(new MonitoredPost
             {
-                Author = post.AuthorName,
+                Author = post.Author,
                 CreatedAt = DateTime.Now,
                 FetchedAt = post.FetchedAt,
-                Permalink = post.Permalink.ToString(),
-                RedditId = post.Id,
-                Url = post.Url.ToString()
+                Permalink = post.Permalink,
+                RedditId = post.RedditId,
+                Url = post.Url
             });
-            _logger.LogDebug($"Post : [{post.Title} at {post.CreatedUTC}]");
+            _logger.LogDebug($"Post : [{post.Title} at {post.CreatedAt}]");
         }
 
         private void OnStopping()
