@@ -57,7 +57,7 @@ namespace PostMonitor.Poller
 
         private async Task StartPolling(CancellationToken cancellationToken)
         {
-            await _redditWrapper.ListenToNewPosts("/r/goddesses", HandlingPost);
+            await _redditWrapper.ListenToNewPosts(_appConfig.SubToWatch, HandlingPost);
         }
 
         private void HandlingPost(IRedditPost post)
