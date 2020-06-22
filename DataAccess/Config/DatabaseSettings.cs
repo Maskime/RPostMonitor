@@ -1,4 +1,4 @@
-namespace DataAccess
+namespace DataAccess.Config
 {
     public class DatabaseSettings
     {

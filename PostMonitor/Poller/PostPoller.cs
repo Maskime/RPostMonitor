@@ -11,24 +11,28 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Common.Model.Repositories;
 using Common.Reddit;
+
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace PostPoller
+using PostMonitor.Config;
+
+namespace PostMonitor.Poller
 {
-    public class RGoddessesPoller : IHostedService
+    public class PostPoller : IHostedService
     {
-        private readonly ILogger<RGoddessesPoller> _logger;
+        private readonly ILogger<PostPoller> _logger;
         private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly PollerConfiguration _appConfig;
         private readonly IMonitoredPostRepository _monitoredPostRepository;
         private readonly IRedditWrapper _redditWrapper;
 
-        public RGoddessesPoller(
-            ILogger<RGoddessesPoller> logger,
+        public PostPoller(
+            ILogger<PostPoller> logger,
             IHostApplicationLifetime applicationLifetime,
             IOptions<PollerConfiguration> config,
             IMonitoredPostRepository monitoredPostRepository,
