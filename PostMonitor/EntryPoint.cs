@@ -1,17 +1,22 @@
 ﻿using System.Threading.Tasks;
+
 using Common.Model.Repositories;
 using Common.Reddit;
-using DataAccess;
+
+using DataAccess.Config;
 using DataAccess.Reddit;
 using DataAccess.Repositories;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using PostPoller;
-using PostUpdater;
 
-namespace Bootstrap
+using PostMonitor.Config;
+using PostMonitor.Poller;
+using PostMonitor.Updater;
+
+namespace PostMonitor
 {
     public static class EntryPoint
     {
@@ -24,8 +29,8 @@ namespace Bootstrap
             Host.CreateDefaultBuilder(args)
                 .ConfigureServices((context, services) =>
                 {
-                    services.AddHostedService<RGoddessesUpdater>();
-                    services.AddHostedService<RGoddessesPoller>();
+                    services.AddHostedService<PostUpdater>();
+                    services.AddHostedService<PostPoller>();
                     
                     services.Configure<PollerConfiguration>(context.Configuration.GetSection(PollerConfiguration.ConfigKey));
                     services.Configure<DatabaseSettings>(context.Configuration.GetSection(DatabaseSettings.ConfigKey));

@@ -18,14 +18,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
-      <ProjectReference Include="..\PostPoller\PostPoller.csproj" />
+      <ProjectReference Include="..\PostMonitor\PostMonitor.csproj" />
       <ProjectReference Include="..\PostUpdater\PostUpdater.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <None Update="appsettings.json">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
     </ItemGroup>
 
 </Project>

@@ -1,7 +1,12 @@
 using System;
 using System.Threading.Tasks;
+
 using Common.Reddit;
+
+using DataAccess.Config;
+
 using Microsoft.Extensions.Options;
+
 using RedditSharp;
 
 namespace DataAccess.Reddit

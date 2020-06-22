@@ -1,7 +1,8 @@
 using System;
+
 using Common.Model.Document;
 
-namespace PostPoller
+namespace PostMonitor.Poller
 {
     public class MonitoredPost:IMonitoredPost
     {

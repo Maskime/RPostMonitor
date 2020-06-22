@@ -8,7 +8,7 @@
 // 
 // ************************************************************************************************
 
-namespace DataAccess.Reddit
+namespace DataAccess.Config
 {
     public class RedditConfiguration
     {

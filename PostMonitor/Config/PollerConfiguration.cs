@@ -1,4 +1,4 @@
-namespace PostPoller
+namespace PostMonitor.Config
 {
     public class PollerConfiguration
     {
