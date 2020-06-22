@@ -1,4 +1,4 @@
-namespace PostUpdater
+namespace PostMonitor.Config
 {
     public class UpdaterConfiguration
     {

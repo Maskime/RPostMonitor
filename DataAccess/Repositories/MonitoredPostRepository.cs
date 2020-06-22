@@ -1,10 +1,14 @@
 using System;
 using System.Collections.Generic;
+
 using Common.Model.Document;
 using Common.Model.Repositories;
-using Common.Reddit;
+
+using DataAccess.Config;
 using DataAccess.Documents;
+
 using Microsoft.Extensions.Options;
+
 using MongoDB.Driver;
 
 namespace DataAccess.Repositories

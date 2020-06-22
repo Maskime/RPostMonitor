@@ -1,25 +1,27 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
+
 using Common.Model.Repositories;
 using Common.Reddit;
+
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Timer = System.Threading.Timer;
 
-namespace PostUpdater
+using PostMonitor.Config;
+
+namespace PostMonitor.Updater
 {
-    public class RGoddessesUpdater:IHostedService, IDisposable
+    public class PostUpdater:IHostedService, IDisposable
     {
         private readonly UpdaterConfiguration _config;
         private readonly IMonitoredPostRepository _repo;
-        private readonly ILogger<RGoddessesUpdater> _logger;
+        private readonly ILogger<PostUpdater> _logger;
         private Timer _timer;
         private readonly IRedditWrapper _wrapper;
 
-        public RGoddessesUpdater(ILogger<RGoddessesUpdater> logger
+        public PostUpdater(ILogger<PostUpdater> logger
             ,IOptions<UpdaterConfiguration> configOption
             , IMonitoredPostRepository repo
             , IRedditWrapper wrapper

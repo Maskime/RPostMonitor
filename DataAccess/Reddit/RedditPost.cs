@@ -1,5 +1,7 @@
 using System;
+
 using Common.Reddit;
+
 using RedditSharp.Things;
 
 namespace DataAccess.Reddit
