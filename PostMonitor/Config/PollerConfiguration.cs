@@ -7,5 +7,6 @@ namespace PostMonitor.Config
         public string DownloadDir { get; set; }
 
         public string  SubToWatch { get; set; }
+
     }
 }
