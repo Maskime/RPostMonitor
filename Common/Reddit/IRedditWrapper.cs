@@ -7,5 +7,7 @@ namespace Common.Reddit
     {
         Task ListenToNewPosts(string sub, Action<IRedditPost> newPostHandler);
         IRedditPost Fetch(string permalink);
+
+        void StopListeningToNewPost(string watchedSub);
     }
 }

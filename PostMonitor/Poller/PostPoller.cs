@@ -27,7 +27,7 @@ namespace PostMonitor.Poller
     {
         private readonly ILogger<PostPoller> _logger;
         private readonly IHostApplicationLifetime _applicationLifetime;
-        private readonly PollerConfiguration _appConfig;
+        private readonly PollerConfiguration _pollerConfig;
         private readonly IMonitoredPostRepository _monitoredPostRepository;
         private readonly IRedditWrapper _redditWrapper;
 
@@ -41,7 +41,7 @@ namespace PostMonitor.Poller
         {
             _logger = logger;
             _applicationLifetime = applicationLifetime;
-            _appConfig = config.Value;
+            _pollerConfig = config.Value;
             _monitoredPostRepository = monitoredPostRepository;
             _redditWrapper = redditWrapper;
         }
@@ -57,11 +57,23 @@ namespace PostMonitor.Poller
 
         private async Task StartPolling(CancellationToken cancellationToken)
         {
-            await _redditWrapper.ListenToNewPosts(_appConfig.SubToWatch, HandlingPost);
+            if (_monitoredPostRepository.CountMonitoredPosts() - _pollerConfig.NbPostToMonitor <= 0)
+            {
+                _logger.LogInformation("We already reached the number of post that are to be monitored");
+                return;
+            }
+
+            await _redditWrapper.ListenToNewPosts(_pollerConfig.SubToWatch, HandlingPost);
         }
 
         private void HandlingPost(IRedditPost post)
         {
+            if (_monitoredPostRepository.CountMonitoredPosts() + 1 > _pollerConfig.NbPostToMonitor)
+            {
+                _logger.LogInformation("We already reached the number of post that are to be monitored, Stopping poller on this sub");
+                _redditWrapper.StopListeningToNewPost(_pollerConfig.SubToWatch);
+                return;
+            }
             _monitoredPostRepository.Insert(new MonitoredPost
             {
                 Author = post.Author,
@@ -71,7 +83,7 @@ namespace PostMonitor.Poller
                 RedditId = post.RedditId,
                 Url = post.Url
             });
-            _logger.LogDebug($"Post : [{post.Title} at {post.CreatedAt}]");
+            _logger.LogDebug($"Post : [{post.Title} at {post.CreatedAt}] Number [{_monitoredPostRepository.CountMonitoredPosts()}/{_pollerConfig.NbPostToMonitor}]");
         }
 
         private void OnStopping()

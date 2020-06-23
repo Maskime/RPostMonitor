@@ -8,5 +8,7 @@ namespace Common.Model.Repositories
     {
         void Insert(IMonitoredPost monitoredPost);
         List<IMonitoredPost> FindPostWithLastFetchedOlderThan(int nbSeconds);
+
+        long CountMonitoredPosts();
     }
 }

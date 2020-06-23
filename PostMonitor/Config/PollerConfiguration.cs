@@ -3,10 +3,12 @@ namespace PostMonitor.Config
     public class PollerConfiguration
     {
         public const string ConfigKey = "Poller";
-        
-        public string DownloadDir { get; set; }
+
+        public DownloadConfiguration Download { get; set; }
 
         public string  SubToWatch { get; set; }
+
+        public long NbPostToMonitor { get; set; }
 
     }
 }

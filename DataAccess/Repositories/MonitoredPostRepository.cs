@@ -52,5 +52,10 @@ namespace DataAccess.Repositories
                 )
                 .ToList());
         }
+
+        public long CountMonitoredPosts()
+        {
+            return _posts.CountDocuments(p => true);
+        }
     }
 }
