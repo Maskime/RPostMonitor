@@ -15,6 +15,7 @@ namespace DataAccess.Documents
         public string Author { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset FetchedAt { get; set; }
+        public DateTime InsertedAt { get; set; }
         public string RedditId { get; set; }
         public string Permalink { get; set; }
         public string Url { get; set; }

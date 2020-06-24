@@ -44,7 +44,7 @@ namespace PostMonitor.Updater
             foreach (var monitoredPost in postToUpdate)
             {
                 var redditPost = _wrapper.Fetch(monitoredPost.Permalink);
-                _logger.LogDebug($"Fetched {monitoredPost.Title}");
+                _logger.LogDebug($"Fetched [{redditPost.Title}] [{redditPost.RedditId}]");
             }
         }
 

@@ -57,7 +57,7 @@ namespace PostMonitor.Poller
 
         private async Task StartPolling(CancellationToken cancellationToken)
         {
-            if (_monitoredPostRepository.CountMonitoredPosts() - _pollerConfig.NbPostToMonitor <= 0)
+            if (_pollerConfig.NbPostToMonitor - _monitoredPostRepository.CountMonitoredPosts() <= 0)
             {
                 _logger.LogInformation("We already reached the number of post that are to be monitored");
                 return;
@@ -77,11 +77,12 @@ namespace PostMonitor.Poller
             _monitoredPostRepository.Insert(new MonitoredPost
             {
                 Author = post.Author,
-                CreatedAt = DateTime.Now,
+                CreatedAt = post.CreatedAt,
                 FetchedAt = post.FetchedAt,
                 Permalink = post.Permalink,
                 RedditId = post.RedditId,
-                Url = post.Url
+                Url = post.Url,
+                Title = post.Title
             });
             _logger.LogDebug($"Post : [{post.Title} at {post.CreatedAt}] Number [{_monitoredPostRepository.CountMonitoredPosts()}/{_pollerConfig.NbPostToMonitor}]");
         }

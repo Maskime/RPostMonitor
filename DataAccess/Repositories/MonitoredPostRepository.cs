@@ -33,11 +33,13 @@ namespace DataAccess.Repositories
             _posts.InsertOne(new MonitoredPost
             {
                 Author = monitoredPost.Author,
-                CreatedAt = DateTime.Now,
+                InsertedAt = DateTime.Now,
+                CreatedAt = monitoredPost.CreatedAt,
                 FetchedAt = monitoredPost.FetchedAt,
                 Permalink = monitoredPost.Permalink,
                 RedditId = monitoredPost.RedditId,
-                Url = monitoredPost.Url
+                Url = monitoredPost.Url,
+                Title = monitoredPost.Title
             });
         }
 
