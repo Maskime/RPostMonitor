@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 
+using AutoMapper;
+
 using Common.Model.Document;
 using Common.Model.Repositories;
 
@@ -17,10 +19,12 @@ namespace DataAccess.Repositories
     {
         private IMongoCollection<MonitoredPost> _posts;
         private DatabaseSettings _settings;
+        private IMapper _mapper;
 
-        public MonitoredPostRepository(IOptions<DatabaseSettings> settings)
+        public MonitoredPostRepository(IOptions<DatabaseSettings> settings, IMapper mapper)
         {
             _settings = settings.Value;
+            _mapper = mapper;
             var client = new MongoClient(_settings.ConnectionString);
 
             var database = client.GetDatabase(_settings.DatabaseName);
@@ -30,17 +34,7 @@ namespace DataAccess.Repositories
 
         public void Insert(IMonitoredPost monitoredPost)
         {
-            _posts.InsertOne(new MonitoredPost
-            {
-                Author = monitoredPost.Author,
-                InsertedAt = DateTime.Now,
-                CreatedAt = monitoredPost.CreatedAt,
-                FetchedAt = monitoredPost.FetchedAt,
-                Permalink = monitoredPost.Permalink,
-                RedditId = monitoredPost.RedditId,
-                Url = monitoredPost.Url,
-                Title = monitoredPost.Title
-            });
+            _posts.InsertOne(_mapper.Map<MonitoredPost>(monitoredPost));
         }
 
         public List<IMonitoredPost> FindPostWithLastFetchedOlderThan(int nbSeconds)

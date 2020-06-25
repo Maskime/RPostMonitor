@@ -8,9 +8,10 @@
 // 
 // ************************************************************************************************
 
-using System;
 using System.Threading;
 using System.Threading.Tasks;
+
+using AutoMapper;
 
 using Common.Model.Repositories;
 using Common.Reddit;
@@ -30,13 +31,15 @@ namespace PostMonitor.Poller
         private readonly PollerConfiguration _pollerConfig;
         private readonly IMonitoredPostRepository _monitoredPostRepository;
         private readonly IRedditWrapper _redditWrapper;
+        private IMapper _mapper;
 
         public PostPoller(
-            ILogger<PostPoller> logger,
-            IHostApplicationLifetime applicationLifetime,
-            IOptions<PollerConfiguration> config,
-            IMonitoredPostRepository monitoredPostRepository,
-            IRedditWrapper redditWrapper
+            ILogger<PostPoller> logger
+            ,IHostApplicationLifetime applicationLifetime
+            ,IOptions<PollerConfiguration> config
+            ,IMonitoredPostRepository monitoredPostRepository
+            ,IRedditWrapper redditWrapper
+            ,IMapper mapper
             )
         {
             _logger = logger;
@@ -44,6 +47,7 @@ namespace PostMonitor.Poller
             _pollerConfig = config.Value;
             _monitoredPostRepository = monitoredPostRepository;
             _redditWrapper = redditWrapper;
+            _mapper = mapper;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -74,17 +78,10 @@ namespace PostMonitor.Poller
                 _redditWrapper.StopListeningToNewPost(_pollerConfig.SubToWatch);
                 return;
             }
-            _monitoredPostRepository.Insert(new MonitoredPost
-            {
-                Author = post.Author,
-                CreatedAt = post.CreatedAt,
-                FetchedAt = post.FetchedAt,
-                Permalink = post.Permalink,
-                RedditId = post.RedditId,
-                Url = post.Url,
-                Title = post.Title
-            });
-            _logger.LogDebug($"Post : [{post.Title} at {post.CreatedAt}] Number [{_monitoredPostRepository.CountMonitoredPosts()}/{_pollerConfig.NbPostToMonitor}]");
+
+            var autoMappedPost = _mapper.Map<MonitoredPost>(post);
+            _monitoredPostRepository.Insert(autoMappedPost);
+            _logger.LogDebug($"Post : [{post.Title} at {post.Created}] Number [{_monitoredPostRepository.CountMonitoredPosts()}/{_pollerConfig.NbPostToMonitor}]");
         }
 
         private void OnStopping()

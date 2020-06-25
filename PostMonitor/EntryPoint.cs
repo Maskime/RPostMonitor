@@ -1,5 +1,7 @@
 ﻿using System.Threading.Tasks;
 
+using AutoMapper;
+
 using Common.Model.Repositories;
 using Common.Reddit;
 
@@ -36,6 +38,7 @@ namespace PostMonitor
                     services.Configure<DatabaseSettings>(context.Configuration.GetSection(DatabaseSettings.ConfigKey));
                     services.Configure<RedditConfiguration>(context.Configuration.GetSection(RedditConfiguration.ConfigKey));
                     services.Configure<UpdaterConfiguration>(context.Configuration.GetSection(UpdaterConfiguration.ConfigKey));
+                    services.AddAutoMapper(typeof(DataAccessAutoMapperProfile), typeof(PostMonitorAutoMapperProfile));
 
                     services.AddSingleton<IMonitoredPostRepository, MonitoredPostRepository>();
                     services.AddSingleton<IRedditWrapper, RedditWrapper>();

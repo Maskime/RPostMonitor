@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+
+using AutoMapper;
 
 using Common.Reddit;
 
@@ -24,10 +25,12 @@ namespace DataAccess.Reddit
             new Dictionary<string, CancellationTokenSource>();
 
         private readonly ILogger<RedditWrapper> _logger;
+        private IMapper _mapper;
 
         public RedditWrapper(
             IOptions<RedditConfiguration> redditConfigOption
             , ILogger<RedditWrapper> logger
+            , IMapper mapper
         )
         {
             var redditConfig = redditConfigOption.Value;
@@ -38,6 +41,7 @@ namespace DataAccess.Reddit
             //"false" means that it will NOT load the logged in user profile so reddit.User will be null
             _reddit = new RedditSharp.Reddit(webAgent, false);
             _logger = logger;
+            _mapper = mapper;
         }
 
         public async Task ListenToNewPosts(string sub, Action<IRedditPost> newPostHandler)
@@ -63,7 +67,7 @@ namespace DataAccess.Reddit
                         break;
                     }
 
-                    newPostHandler?.Invoke(RedditPost.From(post));
+                    newPostHandler?.Invoke(_mapper.Map<IRedditPost>(post));
                 }
             }, cancellationToken);
 
@@ -84,7 +88,7 @@ namespace DataAccess.Reddit
                 Post post = _reddit.GetPost(new Uri($"https://www.reddit.com/{permalink}"));
                 if (post != null)
                 {
-                    return RedditPost.From(post);
+                    return _mapper.Map<IRedditPost>(post);
                 }
                 _logger.LogWarning($"Could not retrieve updated information for [{permalink}]");
                 return null;
