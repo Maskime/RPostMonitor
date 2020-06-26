@@ -8,21 +8,18 @@
 // 
 // ************************************************************************************************
 
-using AutoMapper;
+using System;
 
-using Common.Model.Document;
-using Common.Reddit;
-
-using PostMonitor.Poller;
-
-namespace PostMonitor.Config
+namespace Common.Errors
 {
-    public class PostMonitorAutoMapperProfile:Profile
+    public class PostMonitorException:Exception
     {
-        public PostMonitorAutoMapperProfile()
+        public PostMonitorException(string? message) : base(message)
         {
-            CreateMap<IRedditPost, MonitoredPost>();
-            CreateMap<IRedditPost, IMonitoredPost>();
+        }
+
+        public PostMonitorException(string? message, Exception? innerException) : base(message, innerException)
+        {
         }
     }
 }

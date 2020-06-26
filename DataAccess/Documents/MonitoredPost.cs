@@ -51,5 +51,6 @@ namespace DataAccess.Documents
         public string Title { get; set; }
         public int Upvotes { get; set; }
         public Uri Url { get; set; }
+        public int IterationsNumber { get; set; }
     }
 }

@@ -26,6 +26,7 @@ namespace DataAccess.Reddit
 
         private readonly ILogger<RedditWrapper> _logger;
         private IMapper _mapper;
+        private readonly ISet<string> _fetching = new HashSet<string>();
 
         public RedditWrapper(
             IOptions<RedditConfiguration> redditConfigOption
@@ -80,26 +81,44 @@ namespace DataAccess.Reddit
                 _logger.LogInformation("Operation canceled");
             }
         }
+        private readonly object _fetchingLock = new object();
 
-        public IRedditPost Fetch(string permalink)
+        public bool Fetch(string fullName, out IRedditPost fetched)
         {
             try
             {
-                Post post = _reddit.GetPost(new Uri($"https://www.reddit.com/{permalink}"));
-                if (post != null)
+                lock (_fetchingLock)
                 {
-                    return _mapper.Map<IRedditPost>(post);
+                    if (_fetching.Contains(fullName))
+                    {
+                        fetched = null;
+                        _logger.LogDebug($"[{fullName}] is already being fetch, ignoring this one");
+                        return false;
+                    }
                 }
-                _logger.LogWarning($"Could not retrieve updated information for [{permalink}]");
-                return null;
+
+                lock (_fetchingLock)
+                {
+                    _fetching.Add(fullName);
+                }
+                if (_reddit.GetThingByFullname(fullName) is Post post)
+                {
+                    fetched = _mapper.Map<IRedditPost>(post);
+                    lock (_fetchingLock)
+                    {
+                        _fetching.Remove(post.FullName);
+                    }
+                    return true;
+                }
+                _logger.LogWarning($"Could not retrieve updated information for [{fullName}]");
+                fetched = null;
+                return false;
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, $"When fetching updated info for [{permalink}]");
+                _logger.LogError(exception, $"When fetching updated info for [{fullName}]");
                 throw;
             }
-
-            
         }
 
         public void StopListeningToNewPost(string watchedSub)

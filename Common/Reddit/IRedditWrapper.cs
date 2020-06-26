@@ -6,7 +6,7 @@ namespace Common.Reddit
     public interface IRedditWrapper
     {
         Task ListenToNewPosts(string sub, Action<IRedditPost> newPostHandler);
-        IRedditPost Fetch(string permalink);
+        bool Fetch(string fullName, out IRedditPost fetchedPost);
 
         void StopListeningToNewPost(string watchedSub);
     }

@@ -6,9 +6,11 @@ namespace Common.Model.Repositories
 {
     public interface IMonitoredPostRepository
     {
-        void Insert(IMonitoredPost monitoredPost);
+        bool Insert(IMonitoredPost monitoredPost);
         List<IMonitoredPost> FindPostWithLastFetchedOlderThan(int nbSeconds);
 
         long CountMonitoredPosts();
+
+        void AddVersion(IMonitoredPost currentVersion, IMonitoredPost newVersion);
     }
 }

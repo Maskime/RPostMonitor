@@ -80,8 +80,10 @@ namespace PostMonitor.Poller
             }
 
             var autoMappedPost = _mapper.Map<MonitoredPost>(post);
-            _monitoredPostRepository.Insert(autoMappedPost);
-            _logger.LogDebug($"Post : [{post.Title} at {post.Created}] Number [{_monitoredPostRepository.CountMonitoredPosts()}/{_pollerConfig.NbPostToMonitor}]");
+            if (_monitoredPostRepository.Insert(autoMappedPost))
+            {
+                _logger.LogDebug($"Post : [{post.Title} at {post.Created}] Number [{_monitoredPostRepository.CountMonitoredPosts()}/{_pollerConfig.NbPostToMonitor}]");
+            }
         }
 
         private void OnStopping()
