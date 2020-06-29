@@ -11,6 +11,6 @@ namespace Common.Model.Repositories
 
         long CountMonitoredPosts();
 
-        void AddVersion(IMonitoredPost currentVersion, IMonitoredPost newVersion);
+        void AddVersion(IMonitoredPost newVersion);
     }
 }

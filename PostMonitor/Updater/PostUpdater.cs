@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 
 using AutoMapper;
 
@@ -9,13 +10,13 @@ using Common.Model.Document;
 using Common.Model.Repositories;
 using Common.Reddit;
 
-using DataAccess.Documents;
-
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using PostMonitor.Config;
+
+using Timer = System.Timers.Timer;
 
 namespace PostMonitor.Updater
 {
@@ -24,10 +25,10 @@ namespace PostMonitor.Updater
         private readonly UpdaterConfiguration _config;
         private readonly IMonitoredPostRepository _repo;
         private readonly ILogger<PostUpdater> _logger;
-        private Timer _timer;
         private readonly IRedditWrapper _wrapper;
         private IMapper _mapper;
-        private bool _updateRunning;
+        private int _updateInstance = 0;
+        private Timer _timer;
 
         public PostUpdater(ILogger<PostUpdater> logger
             ,IOptions<UpdaterConfiguration> configOption
@@ -43,39 +44,84 @@ namespace PostMonitor.Updater
             _mapper = mapper;
         }
 
-        private void UpdatePosts(object sender)
+        private void UpdatePosts(object sender, ElapsedEventArgs elapsedEventArgs)
         {
-            if (_updateRunning)
-            {
-                _logger.LogDebug("There already an update operation on going skipping this one.");
-                return;
-            }
-
-            _updateRunning = true;
+            _timer.Enabled = false;
+            _updateInstance++;
+            _logger.LogDebug($"Starting instance [{_updateInstance}]");
+            
             List<IMonitoredPost> postToUpdate = _repo.FindPostWithLastFetchedOlderThan(60);
             if (postToUpdate == null)
             {
+                _timer.Enabled = true;
                 return;
             }
 
-            foreach (IMonitoredPost monitoredPost in postToUpdate)
+            List<List<IMonitoredPost>> paginatedResults = PaginatePostToUpdateList(postToUpdate);
+            foreach (List<IMonitoredPost> resultsPage in paginatedResults)
             {
-                if (!_wrapper.Fetch(monitoredPost.FullName, out IRedditPost update))
+                var tasks = new List<Task<IRedditPost>>(resultsPage.Count);
+                foreach (IMonitoredPost monitoredPost in resultsPage)
                 {
-                    continue;
+                    _logger.LogDebug($"Planning to fetch [{monitoredPost.Title}]Iteration Number [{monitoredPost.IterationsNumber}] Last fetch [{monitoredPost.FetchedAt}]");
+                    tasks.Add(_wrapper.FetchAsync(monitoredPost.FullName));
                 }
-                _repo.AddVersion(monitoredPost, _mapper.Map<IMonitoredPost>(update));
-                _logger.LogDebug($"Fetched [{update.Title}] [{update.Id}][{monitoredPost.IterationsNumber}]");
+
+                try
+                {
+                    _logger.LogDebug($"Waiting for the [{tasks.Count}] to finish");
+                    Task.WaitAll(tasks: tasks.ToArray());
+                    foreach (Task<IRedditPost> task in tasks)
+                    {
+                        IRedditPost postUpdate = task.Result;
+                        _repo.AddVersion(_mapper.Map<IMonitoredPost>(postUpdate));
+                        _logger.LogDebug($"Fetched [{postUpdate.Title}] [{postUpdate.Id}]");
+                    }
+                }
+                catch (AggregateException aggregateException)
+                {
+                    _logger.LogError(@"Errors when fetching several posts at  the same time.");
+                    foreach (Exception exception in aggregateException.InnerExceptions)
+                    {
+                        _logger.LogError(exception, @"When fetching post details");
+                    }
+                }
             }
 
-            _updateRunning = false;
+            _timer.Enabled = true;
+        }
+
+        private List<List<IMonitoredPost>> PaginatePostToUpdateList(List<IMonitoredPost> postToUpdate)
+        {
+            var output = new List<List<IMonitoredPost>>();
+            int index = 0;
+            foreach (IMonitoredPost monitoredPost in postToUpdate)
+            {
+                if (index == output.Count || index == output.Count + 1)
+                {
+                    output.Insert(index, new List<IMonitoredPost>());
+                }
+                
+                output[index].Add(monitoredPost);
+                if (output[index].Count > 0 && output[index].Count % _config.SimultaneousFetchRequest == 0)
+                {
+                    index++;
+                }
+            }
+
+            return output;
         }
 
         public Task StartAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("Timed Hosted Service running.");
-
-            _timer = new Timer(UpdatePosts, null, TimeSpan.Zero, TimeSpan.FromSeconds(_config.Periodicity));
+            _timer = new Timer { 
+                Interval = _config.PeriodicityInSeconds * 1000, 
+                AutoReset = true, 
+                Enabled = true
+            };
+            _timer.Elapsed += UpdatePosts;
+            // _timer = new Timer(UpdatePosts, null, TimeSpan.Zero, TimeSpan.FromSeconds(_config.PeriodicityInSeconds));
 
             return Task.CompletedTask;
         }
@@ -84,7 +130,7 @@ namespace PostMonitor.Updater
         {
             _logger.LogInformation("Timed Hosted Service is stopping.");
 
-            _timer?.Change(Timeout.Infinite, 0);
+            _timer.Enabled = false;
 
             return Task.CompletedTask;
         }

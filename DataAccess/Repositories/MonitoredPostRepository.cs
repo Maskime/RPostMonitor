@@ -64,7 +64,9 @@ namespace DataAccess.Repositories
             var dateTimeOffset = DateTimeOffset.Now;
             var maxLastFetch = dateTimeOffset.AddSeconds(nbSeconds * -1);
 
-            var sort = Builders<MonitoredPost>.Sort.Ascending(p => p.IterationsNumber);
+            var sort = Builders<MonitoredPost>.Sort
+                                              .Ascending(p => p.IterationsNumber)
+                                              .Descending(p => p.FetchedAt);
             return new List<IMonitoredPost>(_posts
                 .Find(post =>
                     post.FetchedAt <= maxLastFetch 
@@ -80,20 +82,25 @@ namespace DataAccess.Repositories
             return _posts.CountDocuments(p => true);
         }
 
-        public void AddVersion(IMonitoredPost currentVersion, IMonitoredPost newVersion)
+        private MonitoredPost Get(string redditId)
+        {
+            return _posts.Find(p => p.RedditId == redditId).FirstOrDefault();
+        }
+
+        public void AddVersion(IMonitoredPost newVersion)
         {
             var newPostVersion = _mapper.Map<MonitoredPost>(newVersion);
-            newPostVersion.IterationsNumber = currentVersion.IterationsNumber + 1;
-            MonitoredPost currentPost = _posts.Find(p => p.RedditId == currentVersion.Id).FirstOrDefault();
-            if (currentPost == null)
+            MonitoredPost oldVersion = Get(newPostVersion.RedditId);
+            if (oldVersion == null)
             {
-                throw new PostMonitorException($"Could not find original version for post id [{currentVersion.Id}]");
+                throw new PostMonitorException($"Could not find original version for post id [{newVersion.Id}]");
             }
+            newPostVersion.IterationsNumber = oldVersion.IterationsNumber + 1;
 
-            newPostVersion.Id = currentPost.Id;
+            newPostVersion.Id = oldVersion.Id;
             _posts.ReplaceOne(p => p.RedditId == newPostVersion.RedditId, newPostVersion);
 
-            var versionedPost = _mapper.Map<MonitoredPost>(currentVersion);
+            var versionedPost = _mapper.Map<MonitoredPost>(oldVersion);
             versionedPost.Id = null;
             _postVersions.InsertOne(versionedPost);
         }

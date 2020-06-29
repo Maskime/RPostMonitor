@@ -121,6 +121,20 @@ namespace DataAccess.Reddit
             }
         }
 
+        public Task<IRedditPost> FetchAsync(string fullName)
+        {
+            return Task.Run(() =>
+            {
+                _logger.LogDebug($"Fetching [{fullName}]");
+                if (_reddit.GetThingByFullname(fullName) is Post post)
+                {
+                    return _mapper.Map<IRedditPost>(post);
+                }
+                return null;
+            });
+            
+        }
+
         public void StopListeningToNewPost(string watchedSub)
         {
             if (!_subTokenSources.ContainsKey(watchedSub))
