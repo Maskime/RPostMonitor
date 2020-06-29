@@ -12,5 +12,7 @@ namespace Common.Model.Repositories
         long CountMonitoredPosts();
 
         void AddVersion(IMonitoredPost newVersion);
+
+        void SetFetching(string monitoredPostId, bool currentlyFetched);
     }
 }

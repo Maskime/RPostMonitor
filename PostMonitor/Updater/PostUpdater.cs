@@ -64,6 +64,7 @@ namespace PostMonitor.Updater
                 foreach (IMonitoredPost monitoredPost in resultsPage)
                 {
                     _logger.LogDebug($"Planning to fetch [{monitoredPost.Title}]Iteration Number [{monitoredPost.IterationsNumber}] Last fetch [{monitoredPost.FetchedAt}]");
+                    _repo.SetFetching(monitoredPost.Id, true);
                     tasks.Add(_wrapper.FetchAsync(monitoredPost.FullName));
                 }
 
@@ -76,6 +77,7 @@ namespace PostMonitor.Updater
                         IRedditPost postUpdate = task.Result;
                         _repo.AddVersion(_mapper.Map<IMonitoredPost>(postUpdate));
                         _logger.LogDebug($"Fetched [{postUpdate.Title}] [{postUpdate.Id}]");
+                        _repo.SetFetching(postUpdate.Id, false);
                     }
                 }
                 catch (AggregateException aggregateException)
@@ -121,7 +123,6 @@ namespace PostMonitor.Updater
                 Enabled = true
             };
             _timer.Elapsed += UpdatePosts;
-            // _timer = new Timer(UpdatePosts, null, TimeSpan.Zero, TimeSpan.FromSeconds(_config.PeriodicityInSeconds));
 
             return Task.CompletedTask;
         }

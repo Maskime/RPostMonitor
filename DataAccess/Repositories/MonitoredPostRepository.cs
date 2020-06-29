@@ -71,6 +71,7 @@ namespace DataAccess.Repositories
                 .Find(post =>
                     post.FetchedAt <= maxLastFetch 
                     && !post.SelfTextHtml.Contains("SC_OFF") //Marked as deleted
+                    && !post.CurrentlyFetched // A flag to avoid to retrieve post that are already being fetched
                 )
                 .Sort(sort)
                 .ToList()
@@ -103,6 +104,12 @@ namespace DataAccess.Repositories
             var versionedPost = _mapper.Map<MonitoredPost>(oldVersion);
             versionedPost.Id = null;
             _postVersions.InsertOne(versionedPost);
+        }
+
+        public void SetFetching(string monitoredPostId, bool currentlyFetched)
+        {
+            var update = Builders<MonitoredPost>.Update.Set(p => p.CurrentlyFetched, currentlyFetched);
+            _posts.UpdateOne(p=> p.RedditId == monitoredPostId, update);
         }
     }
 }

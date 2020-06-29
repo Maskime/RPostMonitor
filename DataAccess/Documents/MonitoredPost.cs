@@ -52,5 +52,6 @@ namespace DataAccess.Documents
         public int Upvotes { get; set; }
         public Uri Url { get; set; }
         public int IterationsNumber { get; set; }
+        public bool CurrentlyFetched { get; set; }
     }
 }
