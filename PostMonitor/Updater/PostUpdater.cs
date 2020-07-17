@@ -54,20 +54,20 @@ namespace PostMonitor.Updater
                     _config.NbIterationOnPost,
                     _config.InactivityTimeoutInHours,
                     _config.SimultaneousFetchRequest);
-            _logger.LogInformation(@"[{}] posts to update", postToUpdate.Count);
+            _logger.LogInformation(@"Updating [{Count}] posts", postToUpdate.Count);
 
             var tasks = new List<Task<IRedditPost>>(_config.SimultaneousFetchRequest);
             foreach (IRedditMonitoredPost monitoredPost in postToUpdate)
             {
-                _logger.LogDebug(@"Fetching [{}] Iteration Number [{}] Last fetch [{}]",
-                    monitoredPost.FullName, monitoredPost.IterationNumber, monitoredPost.FetchedAt);
+                _logger.LogDebug(@"Fetching [{FullName}] [{@MonitoredPost}]",
+                    monitoredPost.FullName, monitoredPost);
                 _repo.SetFetching(monitoredPost.FullName, true);
                 tasks.Add(_clientWrapper.FetchAsync(monitoredPost.FullName));
             }
 
             try
             {
-                _logger.LogDebug($"Waiting for the [{tasks.Count}] to finish");
+                _logger.LogDebug(@"Started [{Count}] fetching tasks", tasks.Count);
                 Task.WaitAll(tasks.ToArray());
                 HandleFetchedPosts(tasks);
             }
@@ -100,15 +100,15 @@ namespace PostMonitor.Updater
                 if (AreEqual(fetchedPost, lastVersion))
                 {
                     _repo.UpdatePostInactivity(lastVersion);
-                    _logger.LogDebug(@"No modification for post [{}], Inactivity updated", lastVersion.FullName);
+                    _logger.LogDebug(@"No modification for post [{FullName}], Inactivity updated", lastVersion.FullName);
                 }
                 else
                 {
                     _repo.AddVersion(fetchedPost);
-                    _logger.LogDebug(@"New version added for post [{}]", lastVersion.FullName);
+                    _logger.LogDebug(@"New version added for post [{FullName}]", lastVersion.FullName);
                 }
 
-                _logger.LogDebug(@"Resetting IsFetching flag for [{}]", lastVersion.FullName);
+                _logger.LogDebug(@"Resetting IsFetching flag for [{FullName}]", lastVersion.FullName);
                 _repo.SetFetching(fetchedPost.FullName, false);
             }
         }

@@ -76,8 +76,8 @@ namespace PostMonitor.Poller
             
             if (_monitoredPostRepository.Insert(post))
             {
-                _logger.LogInformation(@"Adding post [{}] to watch list [{}/{}]", 
-                    post.Title, 
+                _logger.LogInformation(@"Adding post [{FullName}] to watch list [{CurrentCount}/{TargetCount}]", 
+                    post.FullName, 
                     _monitoredPostRepository.CountMonitoredPosts(), 
                     _pollerConfig.NbPostToMonitor);
             }

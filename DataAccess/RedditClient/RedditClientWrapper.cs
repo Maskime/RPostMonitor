@@ -19,7 +19,7 @@ namespace DataAccess.RedditClient
 {
     public class RedditClientWrapper : IRedditClientWrapper
     {
-        private readonly RedditSharp.Reddit _reddit;
+        private readonly Reddit _reddit;
 
         private readonly Dictionary<string, CancellationTokenSource> _subTokenSources =
             new Dictionary<string, CancellationTokenSource>();
@@ -35,14 +35,15 @@ namespace DataAccess.RedditClient
         )
         {
             var redditConfig = redditConfigOption.Value;
-
+            _logger = logger;
+            _mapper = mapper;
+            _logger.LogDebug("Creating web agent");
             var webAgent = new BotWebAgent(redditConfig.Username, redditConfig.UserPassword, redditConfig.ClientId,
                 redditConfig.ClientSecret, redditConfig.RedirectURI);
             //This will check if the access token is about to expire before each request and automatically request a new one for you
             //"false" means that it will NOT load the logged in user profile so reddit.User will be null
-            _reddit = new RedditSharp.Reddit(webAgent, false);
-            _logger = logger;
-            _mapper = mapper;
+            _logger.LogDebug("Web agent created");
+            _reddit = new Reddit(webAgent, false);
         }
 
         public async Task ListenToNewPosts(string sub, Action<IRedditPost> newPostHandler)
