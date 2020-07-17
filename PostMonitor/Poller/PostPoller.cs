@@ -11,8 +11,6 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-using AutoMapper;
-
 using Common.Model.Repositories;
 using Common.Reddit;
 
@@ -31,7 +29,6 @@ namespace PostMonitor.Poller
         private readonly PollerConfiguration _pollerConfig;
         private readonly IMonitoredPostRepository _monitoredPostRepository;
         private readonly IRedditClientWrapper _redditClientWrapper;
-        private IMapper _mapper;
 
         public PostPoller(
             ILogger<PostPoller> logger
@@ -39,7 +36,6 @@ namespace PostMonitor.Poller
             ,IOptions<PollerConfiguration> config
             ,IMonitoredPostRepository monitoredPostRepository
             ,IRedditClientWrapper redditClientWrapper
-            ,IMapper mapper
             )
         {
             _logger = logger;
@@ -47,7 +43,6 @@ namespace PostMonitor.Poller
             _pollerConfig = config.Value;
             _monitoredPostRepository = monitoredPostRepository;
             _redditClientWrapper = redditClientWrapper;
-            _mapper = mapper;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)

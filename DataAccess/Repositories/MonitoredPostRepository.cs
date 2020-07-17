@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 using AutoMapper;
 
@@ -86,7 +85,7 @@ namespace DataAccess.Repositories
                                                               .Limit(maxSimultaneousFetch)
                                                               .ToList())
                     ;
-                _logger.LogDebug(@"Found [{}] post to update", toUpdate.Count);
+                _logger.LogDebug(@"Found [{count}] post to update", toUpdate.Count);
                 return toUpdate;
             }
             catch (Exception exception)

@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 using AutoMapper;
 
@@ -17,6 +18,7 @@ using Microsoft.Extensions.Logging;
 using PostMonitor.Config;
 using PostMonitor.Poller;
 using PostMonitor.Updater;
+using Serilog;
 
 namespace PostMonitor
 {
@@ -24,7 +26,21 @@ namespace PostMonitor
     {
         static async Task Main(string[] args)
         {
-            await CreateHostBuilder(args).Build().RunAsync();
+            // try
+            // {
+                // Log.Information(@"Starting application");
+                await CreateHostBuilder(args)
+                      .Build()
+                      .RunAsync();
+            // }
+            // catch (Exception exception)
+            // {
+            //     Log.Error(exception, @"Application crashed");
+            // }
+            // finally
+            // {
+            //     Log.CloseAndFlush();
+            // }
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
@@ -46,8 +62,10 @@ namespace PostMonitor
                 .ConfigureLogging((context, logging) =>
                 {
                     logging.ClearProviders();
-                    logging.AddConfiguration(context.Configuration.GetSection(@"Logging"));
-                    logging.AddConsole();
+                    Log.Logger = new LoggerConfiguration()
+                                 .ReadFrom.Configuration(context.Configuration)
+                                 .CreateLogger();
+                    logging.AddSerilog(dispose: true);
                 })
                 .ConfigureAppConfiguration((config) =>
                 {
