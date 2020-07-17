@@ -6,7 +6,7 @@ using Common.Model.Repositories;
 using Common.Reddit;
 
 using DataAccess.Config;
-using DataAccess.Reddit;
+using DataAccess.RedditClient;
 using DataAccess.Repositories;
 
 using Microsoft.Extensions.Configuration;
@@ -41,7 +41,7 @@ namespace PostMonitor
                     services.AddAutoMapper(typeof(DataAccessAutoMapperProfile), typeof(PostMonitorAutoMapperProfile));
 
                     services.AddSingleton<IMonitoredPostRepository, MonitoredPostRepository>();
-                    services.AddSingleton<IRedditWrapper, RedditWrapper>();
+                    services.AddSingleton<IRedditClientWrapper, RedditClientWrapper>();
                 })
                 .ConfigureLogging((context, logging) =>
                 {

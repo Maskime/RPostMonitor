@@ -30,7 +30,7 @@ namespace PostMonitor.Poller
         private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly PollerConfiguration _pollerConfig;
         private readonly IMonitoredPostRepository _monitoredPostRepository;
-        private readonly IRedditWrapper _redditWrapper;
+        private readonly IRedditClientWrapper _redditClientWrapper;
         private IMapper _mapper;
 
         public PostPoller(
@@ -38,7 +38,7 @@ namespace PostMonitor.Poller
             ,IHostApplicationLifetime applicationLifetime
             ,IOptions<PollerConfiguration> config
             ,IMonitoredPostRepository monitoredPostRepository
-            ,IRedditWrapper redditWrapper
+            ,IRedditClientWrapper redditClientWrapper
             ,IMapper mapper
             )
         {
@@ -46,7 +46,7 @@ namespace PostMonitor.Poller
             _applicationLifetime = applicationLifetime;
             _pollerConfig = config.Value;
             _monitoredPostRepository = monitoredPostRepository;
-            _redditWrapper = redditWrapper;
+            _redditClientWrapper = redditClientWrapper;
             _mapper = mapper;
         }
 
@@ -67,7 +67,7 @@ namespace PostMonitor.Poller
                 return;
             }
 
-            await _redditWrapper.ListenToNewPosts(_pollerConfig.SubToWatch, HandlingPost);
+            await _redditClientWrapper.ListenToNewPosts(_pollerConfig.SubToWatch, HandlingPost);
         }
 
         private void HandlingPost(IRedditPost post)
@@ -75,14 +75,16 @@ namespace PostMonitor.Poller
             if (_monitoredPostRepository.CountMonitoredPosts() + 1 > _pollerConfig.NbPostToMonitor)
             {
                 _logger.LogInformation("We already reached the number of post that are to be monitored, Stopping poller on this sub");
-                _redditWrapper.StopListeningToNewPost(_pollerConfig.SubToWatch);
+                _redditClientWrapper.StopListeningToNewPost(_pollerConfig.SubToWatch);
                 return;
             }
-
-            var autoMappedPost = _mapper.Map<MonitoredPost>(post);
-            if (_monitoredPostRepository.Insert(autoMappedPost))
+            
+            if (_monitoredPostRepository.Insert(post))
             {
-                _logger.LogDebug($"Post : [{post.Title} at {post.Created}] Number [{_monitoredPostRepository.CountMonitoredPosts()}/{_pollerConfig.NbPostToMonitor}]");
+                _logger.LogInformation(@"Adding post [{}] to watch list [{}/{}]", 
+                    post.Title, 
+                    _monitoredPostRepository.CountMonitoredPosts(), 
+                    _pollerConfig.NbPostToMonitor);
             }
         }
 

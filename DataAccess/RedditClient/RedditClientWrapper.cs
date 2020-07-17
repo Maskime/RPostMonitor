@@ -15,22 +15,22 @@ using Microsoft.Extensions.Options;
 using RedditSharp;
 using RedditSharp.Things;
 
-namespace DataAccess.Reddit
+namespace DataAccess.RedditClient
 {
-    public class RedditWrapper : IRedditWrapper
+    public class RedditClientWrapper : IRedditClientWrapper
     {
         private readonly RedditSharp.Reddit _reddit;
 
         private readonly Dictionary<string, CancellationTokenSource> _subTokenSources =
             new Dictionary<string, CancellationTokenSource>();
 
-        private readonly ILogger<RedditWrapper> _logger;
+        private readonly ILogger<RedditClientWrapper> _logger;
         private IMapper _mapper;
         private readonly ISet<string> _fetching = new HashSet<string>();
 
-        public RedditWrapper(
+        public RedditClientWrapper(
             IOptions<RedditConfiguration> redditConfigOption
-            , ILogger<RedditWrapper> logger
+            , ILogger<RedditClientWrapper> logger
             , IMapper mapper
         )
         {
@@ -68,7 +68,7 @@ namespace DataAccess.Reddit
                         break;
                     }
 
-                    newPostHandler?.Invoke(_mapper.Map<IRedditPost>(post));
+                    newPostHandler?.Invoke(_mapper.Map<RedditFetchedPost>(post));
                 }
             }, cancellationToken);
 
@@ -125,10 +125,9 @@ namespace DataAccess.Reddit
         {
             return Task.Run(() =>
             {
-                _logger.LogDebug($"Fetching [{fullName}]");
                 if (_reddit.GetThingByFullname(fullName) is Post post)
                 {
-                    return _mapper.Map<IRedditPost>(post);
+                    return (IRedditPost)_mapper.Map<RedditFetchedPost>(post);
                 }
                 return null;
             });

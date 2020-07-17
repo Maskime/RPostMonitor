@@ -8,20 +8,10 @@
 // 
 // ************************************************************************************************
 
-using AutoMapper;
-
-using Common.Model.Document;
-using Common.Reddit;
-
-using PostMonitor.Poller;
-
-namespace PostMonitor.Config
+namespace DataAccess.Documents
 {
-    public class PostMonitorAutoMapperProfile:Profile
+    public class RedditMonitoredPostVersionDocument:RedditMonitoredPostDocument
     {
-        public PostMonitorAutoMapperProfile()
-        {
-            CreateMap<IRedditPost, IRedditMonitoredPost>();
-        }
+        
     }
 }

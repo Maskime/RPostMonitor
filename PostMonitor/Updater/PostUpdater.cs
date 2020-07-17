@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 
 using AutoMapper;
 
+using Common.Errors;
 using Common.Model.Document;
 using Common.Model.Repositories;
 using Common.Reddit;
@@ -20,90 +22,148 @@ using Timer = System.Timers.Timer;
 
 namespace PostMonitor.Updater
 {
-    public class PostUpdater:IHostedService, IDisposable
+    public class PostUpdater : IHostedService, IDisposable
     {
         private readonly UpdaterConfiguration _config;
         private readonly IMonitoredPostRepository _repo;
         private readonly ILogger<PostUpdater> _logger;
-        private readonly IRedditWrapper _wrapper;
+        private readonly IRedditClientWrapper _clientWrapper;
         private IMapper _mapper;
-        private int _updateInstance = 0;
         private Timer _timer;
+        private CancellationToken _cancellationToken;
 
         public PostUpdater(ILogger<PostUpdater> logger
-            ,IOptions<UpdaterConfiguration> configOption
+            , IOptions<UpdaterConfiguration> configOption
             , IMonitoredPostRepository repo
-            , IRedditWrapper wrapper
+            , IRedditClientWrapper clientWrapper
             , IMapper mapper
         )
         {
             _logger = logger;
             _config = configOption.Value;
             _repo = repo;
-            _wrapper = wrapper;
+            _clientWrapper = clientWrapper;
             _mapper = mapper;
         }
 
         private void UpdatePosts(object sender, ElapsedEventArgs elapsedEventArgs)
         {
-            _timer.Enabled = false;
-            _updateInstance++;
-            _logger.LogDebug($"Starting instance [{_updateInstance}]");
-            
-            List<IMonitoredPost> postToUpdate = _repo.FindPostWithLastFetchedOlderThan(60);
-            if (postToUpdate == null)
+            List<IRedditMonitoredPost> postToUpdate = _repo
+                .FindPostToUpdate(
+                    _config.TimeBetweenFetchInSeconds,
+                    _config.NbIterationOnPost,
+                    _config.InactivityTimeoutInHours,
+                    _config.SimultaneousFetchRequest);
+            _logger.LogInformation(@"[{}] posts to update", postToUpdate.Count);
+
+            var tasks = new List<Task<IRedditPost>>(_config.SimultaneousFetchRequest);
+            foreach (IRedditMonitoredPost monitoredPost in postToUpdate)
             {
-                _timer.Enabled = true;
-                return;
+                _logger.LogDebug(@"Fetching [{}] Iteration Number [{}] Last fetch [{}]",
+                    monitoredPost.FullName, monitoredPost.IterationNumber, monitoredPost.FetchedAt);
+                _repo.SetFetching(monitoredPost.FullName, true);
+                tasks.Add(_clientWrapper.FetchAsync(monitoredPost.FullName));
             }
 
-            List<List<IMonitoredPost>> paginatedResults = PaginatePostToUpdateList(postToUpdate);
-            foreach (List<IMonitoredPost> resultsPage in paginatedResults)
+            try
             {
-                var tasks = new List<Task<IRedditPost>>(resultsPage.Count);
-                foreach (IMonitoredPost monitoredPost in resultsPage)
+                _logger.LogDebug($"Waiting for the [{tasks.Count}] to finish");
+                Task.WaitAll(tasks.ToArray());
+                HandleFetchedPosts(tasks);
+            }
+            catch (AggregateException aggregateException)
+            {
+                _logger.LogError(@"Errors when fetching several posts at  the same time.");
+                foreach (Exception exception in aggregateException.InnerExceptions)
                 {
-                    _logger.LogDebug($"Planning to fetch [{monitoredPost.Title}]Iteration Number [{monitoredPost.IterationsNumber}] Last fetch [{monitoredPost.FetchedAt}]");
-                    _repo.SetFetching(monitoredPost.Id, true);
-                    tasks.Add(_wrapper.FetchAsync(monitoredPost.FullName));
-                }
-
-                try
-                {
-                    _logger.LogDebug($"Waiting for the [{tasks.Count}] to finish");
-                    Task.WaitAll(tasks: tasks.ToArray());
-                    foreach (Task<IRedditPost> task in tasks)
-                    {
-                        IRedditPost postUpdate = task.Result;
-                        _repo.AddVersion(_mapper.Map<IMonitoredPost>(postUpdate));
-                        _logger.LogDebug($"Fetched [{postUpdate.Title}] [{postUpdate.Id}]");
-                        _repo.SetFetching(postUpdate.Id, false);
-                    }
-                }
-                catch (AggregateException aggregateException)
-                {
-                    _logger.LogError(@"Errors when fetching several posts at  the same time.");
-                    foreach (Exception exception in aggregateException.InnerExceptions)
-                    {
-                        _logger.LogError(exception, @"When fetching post details");
-                    }
+                    _logger.LogError(exception, @"When fetching post details");
                 }
             }
-
-            _timer.Enabled = true;
+            finally
+            {
+                foreach (IRedditMonitoredPost redditMonitoredPost in postToUpdate)
+                {
+                    _repo.SetFetching(redditMonitoredPost.FullName, false);
+                }
+            }
         }
 
-        private List<List<IMonitoredPost>> PaginatePostToUpdateList(List<IMonitoredPost> postToUpdate)
+        private void HandleFetchedPosts(List<Task<IRedditPost>> tasks)
         {
-            var output = new List<List<IMonitoredPost>>();
+            foreach (IRedditPost fetchedPost in tasks.Select(task => task.Result))
+            {
+                if (fetchedPost == null)
+                {
+                    throw new PostMonitorException(@"Fetched post is null");
+                }
+                IRedditMonitoredPost lastVersion = _repo.Get(fetchedPost.FullName);
+                if (AreEqual(fetchedPost, lastVersion))
+                {
+                    _repo.UpdatePostInactivity(lastVersion);
+                    _logger.LogDebug(@"No modification for post [{}], Inactivity updated", lastVersion.FullName);
+                }
+                else
+                {
+                    _repo.AddVersion(fetchedPost);
+                    _logger.LogDebug(@"New version added for post [{}]", lastVersion.FullName);
+                }
+
+                _logger.LogDebug(@"Resetting IsFetching flag for [{}]", lastVersion.FullName);
+                _repo.SetFetching(fetchedPost.FullName, false);
+            }
+        }
+
+        private bool AreEqual(IRedditPost fetchedPost, IRedditMonitoredPost lastVersion)
+        {
+            if (lastVersion == null)
+            {
+                return false;
+            }
+            return    fetchedPost.NumReports == lastVersion.NumReports 
+                   && fetchedPost.ReportCount == lastVersion.ReportCount 
+                   && fetchedPost.ApprovedBy == lastVersion.ApprovedBy 
+                   && fetchedPost.AuthorFlairCssClass == lastVersion.AuthorFlairCssClass 
+                   && fetchedPost.AuthorFlairText == lastVersion.AuthorFlairText 
+                   && fetchedPost.AuthorName == lastVersion.AuthorName 
+                   && fetchedPost.BannedBy == lastVersion.BannedBy 
+                   && fetchedPost.CommentCount == lastVersion.CommentCount 
+                   && fetchedPost.Domain == lastVersion.Domain 
+                   && fetchedPost.Downvotes == lastVersion.Downvotes 
+                   && fetchedPost.Edited == lastVersion.Edited 
+                   && fetchedPost.FullName == lastVersion.FullName 
+                   && fetchedPost.Gilded == lastVersion.Gilded 
+                   && fetchedPost.IsArchived == lastVersion.IsArchived 
+                   && fetchedPost.IsSelfPost == lastVersion.IsSelfPost 
+                   && fetchedPost.IsSpoiler == lastVersion.IsSpoiler 
+                   && fetchedPost.IsStickied == lastVersion.IsStickied 
+                   && fetchedPost.Kind == lastVersion.Kind 
+                   && fetchedPost.LinkFlairCssClass == lastVersion.LinkFlairCssClass 
+                   && fetchedPost.LinkFlairText == lastVersion.LinkFlairText 
+                   && fetchedPost.NSFW == lastVersion.NSFW 
+                   && fetchedPost.Saved == lastVersion.Saved 
+                   && fetchedPost.Score == lastVersion.Score 
+                   && fetchedPost.SelfText == lastVersion.SelfText 
+                   && fetchedPost.SelfTextHtml == lastVersion.SelfTextHtml 
+                   && fetchedPost.Shortlink == lastVersion.Shortlink 
+                   && fetchedPost.SubredditName == lastVersion.SubredditName 
+                   && fetchedPost.Title == lastVersion.Title 
+                   && fetchedPost.Upvotes == lastVersion.Upvotes 
+                   && Equals(fetchedPost.Permalink, lastVersion.Permalink) 
+                   && Equals(fetchedPost.Thumbnail, lastVersion.Thumbnail) 
+                   && Equals(fetchedPost.Url, lastVersion.Url);
+        }
+
+        private List<List<IRedditMonitoredPost>> PaginatePostToUpdateList(List<IRedditMonitoredPost> postToUpdate)
+        {
+            var output = new List<List<IRedditMonitoredPost>>();
             int index = 0;
-            foreach (IMonitoredPost monitoredPost in postToUpdate)
+            foreach (IRedditMonitoredPost monitoredPost in postToUpdate)
             {
                 if (index == output.Count || index == output.Count + 1)
                 {
-                    output.Insert(index, new List<IMonitoredPost>());
+                    output.Insert(index, new List<IRedditMonitoredPost>());
                 }
-                
+
                 output[index].Add(monitoredPost);
                 if (output[index].Count > 0 && output[index].Count % _config.SimultaneousFetchRequest == 0)
                 {
@@ -116,10 +176,13 @@ namespace PostMonitor.Updater
 
         public Task StartAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Timed Hosted Service running.");
-            _timer = new Timer { 
-                Interval = _config.PeriodicityInSeconds * 1000, 
-                AutoReset = true, 
+            _cancellationToken = stoppingToken;
+            _logger.LogInformation("Resetting IsFetching flag to false.");
+            _repo.SetFetchingAll(false);
+            _timer = new Timer
+            {
+                Interval = _config.PeriodicityInSeconds * 1000,
+                AutoReset = true,
                 Enabled = true
             };
             _timer.Elapsed += UpdatePosts;

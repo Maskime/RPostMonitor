@@ -10,21 +10,12 @@
 
 using System;
 
-using Common.Model.Document;
+using Common.Reddit;
 
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-
-namespace DataAccess.Documents
+namespace DataAccess.RedditClient
 {
-    public class MonitoredPostVersion:IMonitoredPost
+    public class RedditFetchedPost:IRedditPost
     {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; }
-
-        public string RedditId { get; set; }
-        
         public DateTimeOffset Created { get; set; }
         public DateTimeOffset CreatedUTC { get; set; }
         public DateTimeOffset FetchedAt { get; set; }
@@ -42,6 +33,7 @@ namespace DataAccess.Documents
         public bool Edited { get; set; }
         public string FullName { get; set; }
         public int Gilded { get; set; }
+        public string Id { get; set; }
         public bool IsArchived { get; set; }
         public bool IsSelfPost { get; set; }
         public bool IsSpoiler { get; set; }
@@ -61,6 +53,5 @@ namespace DataAccess.Documents
         public string Title { get; set; }
         public int Upvotes { get; set; }
         public Uri Url { get; set; }
-        public int IterationsNumber { get; set; }
     }
 }
