@@ -16,8 +16,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using PostMonitor.Config;
-using PostMonitor.Poller;
-using PostMonitor.Updater;
+using PostMonitor.HostedServices;
+
 using Serilog;
 
 namespace PostMonitor
@@ -49,11 +49,14 @@ namespace PostMonitor
                 {
                     services.AddHostedService<PostUpdater>();
                     services.AddHostedService<PostPoller>();
+                    services.AddHostedService<CsvExport>();
                     
                     services.Configure<PollerConfiguration>(context.Configuration.GetSection(PollerConfiguration.ConfigKey));
                     services.Configure<DatabaseSettings>(context.Configuration.GetSection(DatabaseSettings.ConfigKey));
                     services.Configure<RedditConfiguration>(context.Configuration.GetSection(RedditConfiguration.ConfigKey));
                     services.Configure<UpdaterConfiguration>(context.Configuration.GetSection(UpdaterConfiguration.ConfigKey));
+                    services.Configure<CsvExportConfiguration>(context.Configuration.GetSection(CsvExportConfiguration.ConfigKey));
+                    
                     services.AddAutoMapper(typeof(DataAccessAutoMapperProfile), typeof(PostMonitorAutoMapperProfile));
 
                     services.AddSingleton<IMonitoredPostRepository, MonitoredPostRepository>();

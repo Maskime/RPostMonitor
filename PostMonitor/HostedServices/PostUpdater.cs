@@ -20,7 +20,7 @@ using PostMonitor.Config;
 
 using Timer = System.Timers.Timer;
 
-namespace PostMonitor.Updater
+namespace PostMonitor.HostedServices
 {
     public class PostUpdater : IHostedService, IDisposable
     {
@@ -44,6 +44,31 @@ namespace PostMonitor.Updater
             _repo = repo;
             _clientWrapper = clientWrapper;
             _mapper = mapper;
+        }
+        
+        public Task StartAsync(CancellationToken stoppingToken)
+        {
+            _cancellationToken = stoppingToken;
+            _logger.LogInformation("Resetting IsFetching flag to false.");
+            _repo.SetFetchingAll(false);
+            _timer = new Timer
+            {
+                Interval = _config.PeriodicityInSeconds * 1000,
+                AutoReset = true,
+                Enabled = true
+            };
+            _timer.Elapsed += UpdatePosts;
+
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("Timed Hosted Service is stopping.");
+
+            _timer.Enabled = false;
+
+            return Task.CompletedTask;
         }
 
         private void UpdatePosts(object sender, ElapsedEventArgs elapsedEventArgs)
@@ -174,30 +199,7 @@ namespace PostMonitor.Updater
             return output;
         }
 
-        public Task StartAsync(CancellationToken stoppingToken)
-        {
-            _cancellationToken = stoppingToken;
-            _logger.LogInformation("Resetting IsFetching flag to false.");
-            _repo.SetFetchingAll(false);
-            _timer = new Timer
-            {
-                Interval = _config.PeriodicityInSeconds * 1000,
-                AutoReset = true,
-                Enabled = true
-            };
-            _timer.Elapsed += UpdatePosts;
-
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync(CancellationToken stoppingToken)
-        {
-            _logger.LogInformation("Timed Hosted Service is stopping.");
-
-            _timer.Enabled = false;
-
-            return Task.CompletedTask;
-        }
+        
 
         public void Dispose()
         {

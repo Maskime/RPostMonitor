@@ -20,7 +20,7 @@ using Microsoft.Extensions.Options;
 
 using PostMonitor.Config;
 
-namespace PostMonitor.Poller
+namespace PostMonitor.HostedServices
 {
     public class PostPoller : IHostedService
     {

@@ -13,7 +13,8 @@ using AutoMapper;
 using Common.Model.Document;
 using Common.Reddit;
 
-using PostMonitor.Poller;
+using PostMonitor.HostedServices;
+using PostMonitor.Model;
 
 namespace PostMonitor.Config
 {
@@ -22,6 +23,7 @@ namespace PostMonitor.Config
         public PostMonitorAutoMapperProfile()
         {
             CreateMap<IRedditPost, IRedditMonitoredPost>();
+            CreateMap<IRedditMonitoredPost, CsvRow>();
         }
     }
 }

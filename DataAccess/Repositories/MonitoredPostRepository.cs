@@ -20,11 +20,11 @@ namespace DataAccess.Repositories
 {
     public class MonitoredPostRepository : IMonitoredPostRepository
     {
-        private IMongoCollection<RedditMonitoredPostDocument> _posts;
-        private DatabaseSettings _settings;
-        private IMapper _mapper;
-        private ILogger<MonitoredPostRepository> _logger;
-        private IMongoCollection<RedditMonitoredPostDocument> _postVersions;
+        private readonly IMapper _mapper;
+        private readonly ILogger<MonitoredPostRepository> _logger;
+        
+        private readonly IMongoCollection<RedditMonitoredPostDocument> _posts;
+        private readonly IMongoCollection<RedditMonitoredPostVersionDocument> _postVersions;
 
         public MonitoredPostRepository(
             IOptions<DatabaseSettings> settings
@@ -32,15 +32,15 @@ namespace DataAccess.Repositories
             , ILogger<MonitoredPostRepository> logger
         )
         {
-            _settings = settings.Value;
+            DatabaseSettings settingsValue = settings.Value;
             _mapper = mapper;
             _logger = logger;
-            var client = new MongoClient(_settings.ConnectionString);
+            var client = new MongoClient(settingsValue.ConnectionString);
 
-            var database = client.GetDatabase(_settings.DatabaseName);
+            var database = client.GetDatabase(settingsValue.DatabaseName);
 
-            _posts = database.GetCollection<RedditMonitoredPostDocument>(_settings.MonitoredPostsCollectionName);
-            _postVersions = database.GetCollection<RedditMonitoredPostDocument>(_settings.MonitoredPostVersionsCollectionName);
+            _posts = database.GetCollection<RedditMonitoredPostDocument>(settingsValue.MonitoredPostsCollectionName);
+            _postVersions = database.GetCollection<RedditMonitoredPostVersionDocument>(settingsValue.MonitoredPostVersionsCollectionName);
         }
 
         public bool Insert(IRedditPost redditPost)
@@ -59,7 +59,7 @@ namespace DataAccess.Repositories
         }
 
         public List<IRedditMonitoredPost> FindPostToUpdate(
-            int lastFetchOlderThanInSeconds, 
+            int lastFetchOlderThanInSeconds,
             int maxNumberOfIterations,
             long configInactivityTimeoutInHours,
             int maxSimultaneousFetch)
@@ -77,9 +77,14 @@ namespace DataAccess.Repositories
                                                               .Find(post =>
                                                                       post.FetchedAt <= maxLastFetch
                                                                       && !post.SelfTextHtml.Contains("SC_OFF") //Marked as deleted
-                                                                      && !post.IsFetching // A flag to avoid to retrieve posts that are currently being fetched
-                                                                      && post.IterationNumber < maxNumberOfIterations // Max number of times to fetch the post.
-                                                                      && post.InactivityAge < TimeSpan.FromHours(configInactivityTimeoutInHours) // Post that have been inactive for too long should not be fetched anymore.
+                                                                      &&
+                                                                      !post
+                                                                          .IsFetching // A flag to avoid to retrieve posts that are currently being fetched
+                                                                      && post.IterationNumber <
+                                                                      maxNumberOfIterations // Max number of times to fetch the post.
+                                                                      && post.InactivityAge <
+                                                                      TimeSpan.FromHours(
+                                                                          configInactivityTimeoutInHours) // Post that have been inactive for too long should not be fetched anymore.
                                                               )
                                                               .Sort(sort)
                                                               .Limit(maxSimultaneousFetch)
@@ -120,7 +125,7 @@ namespace DataAccess.Repositories
             _posts.ReplaceOne(p => p.FullName == newPostVersion.FullName, newPostVersion);
 
             oldVersion.Id = null;
-            _postVersions.InsertOne(oldVersion);
+            _postVersions.InsertOne(oldVersion as RedditMonitoredPostVersionDocument);
         }
 
         public void SetFetching(string fullName, bool isFetching)
@@ -151,6 +156,25 @@ namespace DataAccess.Repositories
         {
             var update = Builders<RedditMonitoredPostDocument>.Update.Set(p => p.IsFetching, isFetching);
             _posts.UpdateMany(p => true, update);
+        }
+
+        public List<IRedditMonitoredPost> FindAllPostAndVersions()
+        {
+            var sort = Builders<RedditMonitoredPostDocument>
+                       .Sort.Ascending(p => p.FullName);
+            var allPosts = _posts.Find(p => true)
+                                 .Sort(sort)
+                                 .ToList();
+            var versionSort = Builders<RedditMonitoredPostVersionDocument>
+                              .Sort.Ascending(p => p.IterationNumber);
+            var output = new List<IRedditMonitoredPost>();
+            foreach (var post in allPosts)
+            {
+                output.Add(post);
+                output.AddRange(_postVersions.Find(p => p.FullName.Equals(post.FullName)).Sort(versionSort).ToList());
+            }
+
+            return output;
         }
     }
 }

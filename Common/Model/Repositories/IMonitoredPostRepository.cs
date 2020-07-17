@@ -28,5 +28,7 @@ namespace Common.Model.Repositories
         void UpdatePostInactivity(IRedditMonitoredPost lastVersion);
 
         void SetFetchingAll(bool isFetching);
+
+        List<IRedditMonitoredPost> FindAllPostAndVersions();
     }
 }

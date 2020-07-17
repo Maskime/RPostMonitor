@@ -8,7 +8,7 @@ namespace PostMonitor.Config
         public const string ConfigKey = "PostUpdater";
 
         /// <summary>
-        /// How often should we check for an update of posts on reddit
+        /// How often should we check for posts to update in the DB
         /// </summary>
         public long PeriodicityInSeconds { get; set; }
         /// <summary>
