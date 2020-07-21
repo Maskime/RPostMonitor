@@ -21,5 +21,8 @@ namespace DataAccess.Config
         public string Username { get; set; }
 
         public string UserPassword { get; set; }
+        public int MaxRetry { get; set; }
+        public double TimeBetweenRetrySequenceInSeconds { get; set; }
+        public double TimeBetweenRetryAttemptInSeconds { get; set; }
     }
 }

@@ -14,6 +14,7 @@ namespace Common.Errors
 {
     public class PostMonitorException:Exception
     {
+        
         public PostMonitorException(string? message) : base(message)
         {
         }

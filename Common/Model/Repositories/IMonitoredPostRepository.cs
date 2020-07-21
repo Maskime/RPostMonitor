@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
@@ -9,11 +10,10 @@ namespace Common.Model.Repositories
     public interface IMonitoredPostRepository
     {
         bool Insert(IRedditPost redditMonitoredPost);
-        List<IRedditMonitoredPost> FindPostToUpdate(
-            int lastFetchOlderThanInSeconds, 
+        List<IRedditMonitoredPost> FindPostToUpdate(int lastFetchOlderThanInSeconds,
             int maxNumberOfIterations,
             long inactivityTimeoutInHours,
-            int maxSimultaneousFetch);
+            int maxSimultaneousFetch, TimeSpan maxPostAgeInDays);
 
         long CountMonitoredPosts();
 

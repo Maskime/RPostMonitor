@@ -22,7 +22,7 @@ namespace DataAccess.Repositories
     {
         private readonly IMapper _mapper;
         private readonly ILogger<MonitoredPostRepository> _logger;
-        
+
         private readonly IMongoCollection<RedditMonitoredPostDocument> _posts;
         private readonly IMongoCollection<RedditMonitoredPostVersionDocument> _postVersions;
 
@@ -40,7 +40,8 @@ namespace DataAccess.Repositories
             var database = client.GetDatabase(settingsValue.DatabaseName);
 
             _posts = database.GetCollection<RedditMonitoredPostDocument>(settingsValue.MonitoredPostsCollectionName);
-            _postVersions = database.GetCollection<RedditMonitoredPostVersionDocument>(settingsValue.MonitoredPostVersionsCollectionName);
+            _postVersions =
+                database.GetCollection<RedditMonitoredPostVersionDocument>(settingsValue.MonitoredPostVersionsCollectionName);
         }
 
         public bool Insert(IRedditPost redditPost)
@@ -54,43 +55,40 @@ namespace DataAccess.Repositories
 
             var document = _mapper.Map<RedditMonitoredPostDocument>(redditPost);
             document.IterationNumber = 1;
+            document.Age = DateTimeOffset.UtcNow - document.CreatedUTC;
             _posts.InsertOne(document);
             return true;
         }
 
-        public List<IRedditMonitoredPost> FindPostToUpdate(
-            int lastFetchOlderThanInSeconds,
+        public List<IRedditMonitoredPost> FindPostToUpdate(int lastFetchOlderThanInSeconds,
             int maxNumberOfIterations,
             long configInactivityTimeoutInHours,
-            int maxSimultaneousFetch)
+            int maxSimultaneousFetch, TimeSpan maxPostAgeInDays)
         {
-            _logger.LogDebug(@"Entering FindPostToUpdate");
-            var dateTimeOffset = DateTimeOffset.Now;
+            var dateTimeOffset = DateTimeOffset.UtcNow;
             var maxLastFetch = dateTimeOffset.AddSeconds(lastFetchOlderThanInSeconds * -1);
 
             var sort = Builders<RedditMonitoredPostDocument>.Sort
-                                                            .Ascending(p =>
-                                                                p.IterationNumber); // Give the priority to the posts that where less updated.
+                                                            .Ascending(p => p.FetchedAt);
+            TimeSpan maxInactivityAge = TimeSpan.FromHours(configInactivityTimeoutInHours);
             try
             {
                 var toUpdate = new List<IRedditMonitoredPost>(_posts
                                                               .Find(post =>
-                                                                      post.FetchedAt <= maxLastFetch
-                                                                      && !post.SelfTextHtml.Contains("SC_OFF") //Marked as deleted
-                                                                      &&
-                                                                      !post
-                                                                          .IsFetching // A flag to avoid to retrieve posts that are currently being fetched
-                                                                      && post.IterationNumber <
-                                                                      maxNumberOfIterations // Max number of times to fetch the post.
-                                                                      && post.InactivityAge <
-                                                                      TimeSpan.FromHours(
-                                                                          configInactivityTimeoutInHours) // Post that have been inactive for too long should not be fetched anymore.
+                                                                  post.FetchedAt <= maxLastFetch
+                                                                  //Marked as deleted
+                                                                  && !post.SelfTextHtml.Contains("SC_OFF")
+                                                                  // A flag to avoid to retrieve posts that are currently being fetched
+                                                                  && !post.IsFetching
+                                                                  // Max number of times to fetch the post.
+                                                                  && post.Age < maxPostAgeInDays
+                                                                  // Post that have been inactive for too long should not be fetched anymore.
+                                                                  && post.InactivityAge < maxInactivityAge
                                                               )
                                                               .Sort(sort)
                                                               .Limit(maxSimultaneousFetch)
                                                               .ToList())
                     ;
-                _logger.LogDebug(@"Found [{count}] post to update", toUpdate.Count);
                 return toUpdate;
             }
             catch (Exception exception)
@@ -120,12 +118,13 @@ namespace DataAccess.Repositories
 
             newPostVersion.IterationNumber = oldVersion.IterationNumber + 1;
             newPostVersion.InactivityAge = TimeSpan.Zero;
+            TimeSpan postAge = DateTimeOffset.UtcNow - oldVersion.CreatedUTC;
+            newPostVersion.Age = postAge;
 
             newPostVersion.Id = oldVersion.Id;
             _posts.ReplaceOne(p => p.FullName == newPostVersion.FullName, newPostVersion);
-
-            oldVersion.Id = null;
-            _postVersions.InsertOne(oldVersion as RedditMonitoredPostVersionDocument);
+            
+            _postVersions.InsertOne(_mapper.Map<RedditMonitoredPostVersionDocument>(oldVersion));
         }
 
         public void SetFetching(string fullName, bool isFetching)
@@ -145,10 +144,13 @@ namespace DataAccess.Repositories
         public void UpdatePostInactivity(IRedditMonitoredPost lastVersion)
         {
             TimeSpan inactivityAge = lastVersion.InactivityAge + (DateTimeOffset.Now - lastVersion.FetchedAt);
+            TimeSpan age = DateTimeOffset.UtcNow - lastVersion.CreatedUTC;
             UpdateDefinition<RedditMonitoredPostDocument> update = Builders<RedditMonitoredPostDocument>
                                                                    .Update
                                                                    .Set(p => p.InactivityAge, inactivityAge)
-                                                                   .Set(p => p.FetchedAt, DateTimeOffset.Now);
+                                                                   .Set(p => p.FetchedAt, DateTimeOffset.Now)
+                                                                   .Set(p => p.Age, age)
+                ;
             _posts.UpdateOne(p => p.FullName == lastVersion.FullName, update);
         }
 
@@ -171,7 +173,10 @@ namespace DataAccess.Repositories
             foreach (var post in allPosts)
             {
                 output.Add(post);
-                output.AddRange(_postVersions.Find(p => p.FullName.Equals(post.FullName)).Sort(versionSort).ToList());
+                output.AddRange(_postVersions
+                                .Find(p => p.FullName.Equals(post.FullName))
+                                .Sort(versionSort)
+                                .ToList());
             }
 
             return output;

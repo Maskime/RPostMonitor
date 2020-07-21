@@ -8,10 +8,11 @@
 // 
 // ************************************************************************************************
 
+using System;
+
 namespace DataAccess.Documents
 {
     public class RedditMonitoredPostVersionDocument:RedditMonitoredPostDocument
     {
-        
     }
 }

@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
-
-using AutoMapper;
 
 using Common.Errors;
 using Common.Model.Document;
@@ -28,59 +25,95 @@ namespace PostMonitor.HostedServices
         private readonly IMonitoredPostRepository _repo;
         private readonly ILogger<PostUpdater> _logger;
         private readonly IRedditClientWrapper _clientWrapper;
-        private IMapper _mapper;
         private Timer _timer;
         private CancellationToken _cancellationToken;
+        private bool _updaterStarted;
 
         public PostUpdater(ILogger<PostUpdater> logger
             , IOptions<UpdaterConfiguration> configOption
             , IMonitoredPostRepository repo
             , IRedditClientWrapper clientWrapper
-            , IMapper mapper
         )
         {
             _logger = logger;
             _config = configOption.Value;
             _repo = repo;
             _clientWrapper = clientWrapper;
-            _mapper = mapper;
+            _clientWrapper.ConnectivityUpdated += ConnectivityUpdated;
         }
-        
+
+        private async void ConnectivityUpdated(bool status)
+        {
+            if (status && !_updaterStarted)
+            {
+                await StartUpdating();
+            } else if (!status && _updaterStarted)
+            {
+                StopUpdating();
+            }
+        }
+
+        private void StopUpdating()
+        {
+            _logger.LogInformation("Stopping Updater.");
+            if (_timer != null)
+            {
+                _timer.Enabled = false;
+            }
+
+            _updaterStarted = false;
+        }
+
         public Task StartAsync(CancellationToken stoppingToken)
         {
             _cancellationToken = stoppingToken;
-            _logger.LogInformation("Resetting IsFetching flag to false.");
+            return Task.CompletedTask;
+        }
+
+        private async Task StartUpdating()
+        {
+            _logger.LogInformation("Starting Updater.");
             _repo.SetFetchingAll(false);
             _timer = new Timer
             {
-                Interval = _config.PeriodicityInSeconds * 1000,
+                Interval = TimeSpan.FromSeconds(_config.PeriodicityInSeconds).TotalMilliseconds,
                 AutoReset = true,
                 Enabled = true
             };
-            _timer.Elapsed += UpdatePosts;
+            _updaterStarted = true;
+            var progress = new Progress<Exception>();
+            _timer.Elapsed += (sender, args) => UpdatePosts(progress);
+            try
+            {
+                progress.ProgressChanged += (sender, exception) =>
+                {
+                    _logger.LogError(exception, "Error when updating posts");
+                };
+            }
+            catch (PostMonitorException ex)
+            {
+                StopUpdating();
+                _logger.LogError(ex, "An exception occurred on the PostUpdate {@Exception}", ex);
+            }
 
-            return Task.CompletedTask;
+            // Other exceptions will bubble up to the main thread and stop the service.
         }
 
         public Task StopAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Timed Hosted Service is stopping.");
-
-            _timer.Enabled = false;
+            StopUpdating();
 
             return Task.CompletedTask;
         }
 
-        private void UpdatePosts(object sender, ElapsedEventArgs elapsedEventArgs)
+        private void UpdatePosts(IProgress<Exception> progress)
         {
             List<IRedditMonitoredPost> postToUpdate = _repo
                 .FindPostToUpdate(
                     _config.TimeBetweenFetchInSeconds,
                     _config.NbIterationOnPost,
                     _config.InactivityTimeoutInHours,
-                    _config.SimultaneousFetchRequest);
-            _logger.LogInformation(@"Updating [{Count}] posts", postToUpdate.Count);
-
+                    _config.SimultaneousFetchRequest, TimeSpan.FromDays(_config.MaxPostAgeInDays));
             var tasks = new List<Task<IRedditPost>>(_config.SimultaneousFetchRequest);
             foreach (IRedditMonitoredPost monitoredPost in postToUpdate)
             {
@@ -103,6 +136,12 @@ namespace PostMonitor.HostedServices
                 {
                     _logger.LogError(exception, @"When fetching post details");
                 }
+
+                progress.Report(aggregateException);
+            }
+            catch (Exception ex)
+            {
+                progress.Report(ex);
             }
             finally
             {
@@ -133,7 +172,6 @@ namespace PostMonitor.HostedServices
                     _logger.LogDebug(@"New version added for post [{FullName}]", lastVersion.FullName);
                 }
 
-                _logger.LogDebug(@"Resetting IsFetching flag for [{FullName}]", lastVersion.FullName);
                 _repo.SetFetching(fetchedPost.FullName, false);
             }
         }

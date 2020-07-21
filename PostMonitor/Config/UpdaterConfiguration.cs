@@ -11,6 +11,9 @@ namespace PostMonitor.Config
         /// How often should we check for posts to update in the DB
         /// </summary>
         public long PeriodicityInSeconds { get; set; }
+
+        public double MaxPostAgeInDays { get; set; }
+        
         /// <summary>
         /// How many iteration should we do on each post.
         /// </summary>

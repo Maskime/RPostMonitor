@@ -47,9 +47,9 @@ namespace PostMonitor
             Host.CreateDefaultBuilder(args)
                 .ConfigureServices((context, services) =>
                 {
-                    services.AddHostedService<PostUpdater>();
                     services.AddHostedService<PostPoller>();
-                    services.AddHostedService<CsvExport>();
+                    services.AddHostedService<PostUpdater>();
+                    // services.AddHostedService<CsvExport>();
                     
                     services.Configure<PollerConfiguration>(context.Configuration.GetSection(PollerConfiguration.ConfigKey));
                     services.Configure<DatabaseSettings>(context.Configuration.GetSection(DatabaseSettings.ConfigKey));

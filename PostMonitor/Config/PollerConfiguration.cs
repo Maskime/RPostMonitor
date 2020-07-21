@@ -9,6 +9,6 @@ namespace PostMonitor.Config
         public string  SubToWatch { get; set; }
 
         public long NbPostToMonitor { get; set; }
-
+        public double NewPostMaxAgeInMinutes { get; set; }
     }
 }
