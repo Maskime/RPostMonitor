@@ -133,14 +133,6 @@ namespace DataAccess.Repositories
             _posts.UpdateOne(p => p.FullName == fullName, update);
         }
 
-        public long CountPostWithMissingIterations(int configNbIterationOnPost)
-        {
-            return _posts.CountDocuments(p =>
-                    p.IterationNumber < configNbIterationOnPost
-                    && !p.SelfTextHtml.Contains("SC_OFF") //Marked as deleted
-            );
-        }
-
         public void UpdatePostInactivity(IRedditMonitoredPost lastVersion)
         {
             TimeSpan inactivityAge = lastVersion.InactivityAge + (DateTimeOffset.Now - lastVersion.FetchedAt);

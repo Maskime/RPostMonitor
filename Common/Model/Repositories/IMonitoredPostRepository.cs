@@ -21,8 +21,6 @@ namespace Common.Model.Repositories
 
         void SetFetching(string fullName, bool isFetching);
 
-        long CountPostWithMissingIterations(int configNbIterationOnPost);
-
         IRedditMonitoredPost Get(string fullName);
 
         void UpdatePostInactivity(IRedditMonitoredPost lastVersion);

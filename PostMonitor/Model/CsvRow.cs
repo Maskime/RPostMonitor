@@ -92,6 +92,8 @@ namespace PostMonitor.Model
         public DateTimeOffset CreatedUTC { get; set; }
         /* Ignored fields */
         [Ignore]
+        public TimeSpan Age { get; set; }
+        [Ignore]
         public DateTimeOffset FetchedAt { get; set; }
         [Ignore]
         public TimeSpan TimeSinceFetch { get; set; }

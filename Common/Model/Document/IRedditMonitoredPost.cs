@@ -9,5 +9,6 @@ namespace Common.Model.Document
     {
         int IterationNumber { get; set; }
         TimeSpan InactivityAge { get; set; }
+        TimeSpan Age { get; set; }
     }
 }
