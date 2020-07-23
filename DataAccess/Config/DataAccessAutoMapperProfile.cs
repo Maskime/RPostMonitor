@@ -38,12 +38,11 @@ namespace DataAccess.Config
                     opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.Id,
                     opt => opt.MapFrom(src => (string)null))
-                .ForMember(
-                    dest => dest.FetchedAt, 
+                ;
+            CreateMap<Post, RedditFetchedPost>()
+                .ForMember(dest => dest.FetchedAt,
                     opt => opt.MapFrom(src => src.FetchedAt.ToUniversalTime()))
                 ;
-            ;
-            CreateMap<Post, RedditFetchedPost>();
             CreateMap<RedditMonitoredPostDocument, RedditMonitoredPostVersionDocument>()
                 .ForMember(dest => dest.Id,
                     opt => opt.MapFrom(src => (string)null))

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,6 +29,7 @@ namespace PostMonitor.HostedServices
         private Timer _timer;
         private CancellationToken _cancellationToken;
         private bool _updaterStarted;
+        private TimeSpan _configPostMaxAge;
 
         public PostUpdater(ILogger<PostUpdater> logger
             , IOptions<UpdaterConfiguration> configOption
@@ -39,6 +41,8 @@ namespace PostMonitor.HostedServices
             _config = configOption.Value;
             _repo = repo;
             _clientWrapper = clientWrapper;
+            _configPostMaxAge = TimeSpan.Parse(_config.MaxPostAge, new CultureInfo("en-US"));
+            _logger.LogInformation("Post will be monitored for [{MonitoredTime}]", _configPostMaxAge);
             _clientWrapper.ConnectivityUpdated += ConnectivityUpdated;
         }
 
@@ -47,7 +51,8 @@ namespace PostMonitor.HostedServices
             if (status && !_updaterStarted)
             {
                 await StartUpdating();
-            } else if (!status && _updaterStarted)
+            }
+            else if (!status && _updaterStarted)
             {
                 StopUpdating();
             }
@@ -85,10 +90,7 @@ namespace PostMonitor.HostedServices
             _timer.Elapsed += (sender, args) => UpdatePosts(progress);
             try
             {
-                progress.ProgressChanged += (sender, exception) =>
-                {
-                    _logger.LogError(exception, "Error when updating posts");
-                };
+                progress.ProgressChanged += (sender, exception) => { _logger.LogError(exception, "Error when updating posts"); };
             }
             catch (PostMonitorException ex)
             {
@@ -111,8 +113,8 @@ namespace PostMonitor.HostedServices
             List<IRedditMonitoredPost> postToUpdate = _repo
                 .FindPostToUpdate(
                     _config.TimeBetweenFetchInSeconds,
-                    _config.InactivityTimeoutInHours,
-                    _config.SimultaneousFetchRequest, TimeSpan.FromDays(_config.MaxPostAgeInDays));
+                    _config.SimultaneousFetchRequest, 
+                    _configPostMaxAge);
             var tasks = new List<Task<IRedditPost>>(_config.SimultaneousFetchRequest);
             foreach (IRedditMonitoredPost monitoredPost in postToUpdate)
             {
@@ -159,84 +161,14 @@ namespace PostMonitor.HostedServices
                 {
                     throw new PostMonitorException(@"Fetched post is null");
                 }
+
                 IRedditMonitoredPost lastVersion = _repo.Get(fetchedPost.FullName);
-                if (AreEqual(fetchedPost, lastVersion))
-                {
-                    _repo.UpdatePostInactivity(lastVersion);
-                    _logger.LogDebug(@"No modification for post [{FullName}], Inactivity updated", lastVersion.FullName);
-                }
-                else
-                {
-                    _repo.AddVersion(fetchedPost);
-                    _logger.LogDebug(@"New version added for post [{FullName}]", lastVersion.FullName);
-                }
+                _repo.AddVersion(fetchedPost);
+                _logger.LogDebug(@"New version added for post [{FullName}]", lastVersion.FullName);
 
                 _repo.SetFetching(fetchedPost.FullName, false);
             }
         }
-
-        private bool AreEqual(IRedditPost fetchedPost, IRedditMonitoredPost lastVersion)
-        {
-            if (lastVersion == null)
-            {
-                return false;
-            }
-            return    fetchedPost.NumReports == lastVersion.NumReports 
-                   && fetchedPost.ReportCount == lastVersion.ReportCount 
-                   && fetchedPost.ApprovedBy == lastVersion.ApprovedBy 
-                   && fetchedPost.AuthorFlairCssClass == lastVersion.AuthorFlairCssClass 
-                   && fetchedPost.AuthorFlairText == lastVersion.AuthorFlairText 
-                   && fetchedPost.AuthorName == lastVersion.AuthorName 
-                   && fetchedPost.BannedBy == lastVersion.BannedBy 
-                   && fetchedPost.CommentCount == lastVersion.CommentCount 
-                   && fetchedPost.Domain == lastVersion.Domain 
-                   && fetchedPost.Downvotes == lastVersion.Downvotes 
-                   && fetchedPost.Edited == lastVersion.Edited 
-                   && fetchedPost.FullName == lastVersion.FullName 
-                   && fetchedPost.Gilded == lastVersion.Gilded 
-                   && fetchedPost.IsArchived == lastVersion.IsArchived 
-                   && fetchedPost.IsSelfPost == lastVersion.IsSelfPost 
-                   && fetchedPost.IsSpoiler == lastVersion.IsSpoiler 
-                   && fetchedPost.IsStickied == lastVersion.IsStickied 
-                   && fetchedPost.Kind == lastVersion.Kind 
-                   && fetchedPost.LinkFlairCssClass == lastVersion.LinkFlairCssClass 
-                   && fetchedPost.LinkFlairText == lastVersion.LinkFlairText 
-                   && fetchedPost.NSFW == lastVersion.NSFW 
-                   && fetchedPost.Saved == lastVersion.Saved 
-                   && fetchedPost.Score == lastVersion.Score 
-                   && fetchedPost.SelfText == lastVersion.SelfText 
-                   && fetchedPost.SelfTextHtml == lastVersion.SelfTextHtml 
-                   && fetchedPost.Shortlink == lastVersion.Shortlink 
-                   && fetchedPost.SubredditName == lastVersion.SubredditName 
-                   && fetchedPost.Title == lastVersion.Title 
-                   && fetchedPost.Upvotes == lastVersion.Upvotes 
-                   && Equals(fetchedPost.Permalink, lastVersion.Permalink) 
-                   && Equals(fetchedPost.Thumbnail, lastVersion.Thumbnail) 
-                   && Equals(fetchedPost.Url, lastVersion.Url);
-        }
-
-        private List<List<IRedditMonitoredPost>> PaginatePostToUpdateList(List<IRedditMonitoredPost> postToUpdate)
-        {
-            var output = new List<List<IRedditMonitoredPost>>();
-            int index = 0;
-            foreach (IRedditMonitoredPost monitoredPost in postToUpdate)
-            {
-                if (index == output.Count || index == output.Count + 1)
-                {
-                    output.Insert(index, new List<IRedditMonitoredPost>());
-                }
-
-                output[index].Add(monitoredPost);
-                if (output[index].Count > 0 && output[index].Count % _config.SimultaneousFetchRequest == 0)
-                {
-                    index++;
-                }
-            }
-
-            return output;
-        }
-
-        
 
         public void Dispose()
         {

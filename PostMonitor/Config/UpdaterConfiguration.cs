@@ -14,17 +14,15 @@ namespace PostMonitor.Config
 
         /// <summary>
         /// How long should we watch a post
+        /// Refer to https://docs.microsoft.com/en-us/dotnet/api/system.timespan.parse?view=netcore-3.1
         /// </summary>
-        public double MaxPostAgeInDays { get; set; }
+        public string MaxPostAge { get; set; }
         
         /// <summary>
         /// When should we try to update a post from reddit.
         /// </summary>
         public int TimeBetweenFetchInSeconds { get; set; }
-        /// <summary>
-        /// If the post didn't have any change in this span, we stop trying to update it.
-        /// </summary>
-        public long InactivityTimeoutInHours { get; set; }
+        
         /// <summary>
         /// How many update http requests we should send at the same time.
         /// </summary>

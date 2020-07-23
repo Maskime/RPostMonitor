@@ -8,7 +8,6 @@ namespace Common.Model.Document
     public interface IRedditMonitoredPost:IRedditPost
     {
         int IterationNumber { get; set; }
-        TimeSpan InactivityAge { get; set; }
         TimeSpan Age { get; set; }
     }
 }

@@ -50,29 +50,25 @@ namespace DataAccess.Repositories
             return true;
         }
 
-        public List<IRedditMonitoredPost> FindPostToUpdate(int lastFetchOlderThanInSeconds,
-            long configInactivityTimeoutInHours,
-            int maxSimultaneousFetch, TimeSpan maxPostAgeInDays)
+        public List<IRedditMonitoredPost> FindPostToUpdate(
+            int lastFetchOlderThanInSeconds,
+            int maxSimultaneousFetch, 
+            TimeSpan maxPostAgeInDays)
         {
             var dateTimeOffset = DateTimeOffset.UtcNow;
             var maxLastFetch = dateTimeOffset.AddSeconds(lastFetchOlderThanInSeconds * -1);
 
             var sort = Builders<RedditMonitoredPostDocument>.Sort
                                                             .Ascending(p => p.FetchedAt);
-            TimeSpan maxInactivityAge = TimeSpan.FromHours(configInactivityTimeoutInHours);
             try
             {
                 var toUpdate = new List<IRedditMonitoredPost>(_context.MonitoredPosts
                                                                       .Find(post =>
                                                                           post.FetchedAt <= maxLastFetch
-                                                                          //Marked as deleted
-                                                                          && !post.SelfTextHtml.Contains("SC_OFF")
                                                                           // A flag to avoid to retrieve posts that are currently being fetched
                                                                           && !post.IsFetching
                                                                           // Max number of times to fetch the post.
                                                                           && post.Age < maxPostAgeInDays
-                                                                          // Post that have been inactive for too long should not be fetched anymore.
-                                                                          && post.InactivityAge < maxInactivityAge
                                                                       )
                                                                       .Sort(sort)
                                                                       .Limit(maxSimultaneousFetch)
@@ -106,9 +102,7 @@ namespace DataAccess.Repositories
             }
 
             newPostVersion.IterationNumber = oldVersion.IterationNumber + 1;
-            newPostVersion.InactivityAge = TimeSpan.Zero;
-            TimeSpan postAge = DateTimeOffset.UtcNow - oldVersion.CreatedUTC;
-            newPostVersion.Age = postAge;
+            newPostVersion.Age = DateTimeOffset.UtcNow - oldVersion.CreatedUTC;
 
             newPostVersion.Id = oldVersion.Id;
             _context.MonitoredPosts.ReplaceOne(p => p.FullName == newPostVersion.FullName, newPostVersion);
@@ -120,19 +114,6 @@ namespace DataAccess.Repositories
         {
             var update = Builders<RedditMonitoredPostDocument>.Update.Set(p => p.IsFetching, isFetching);
             _context.MonitoredPosts.UpdateOne(p => p.FullName == fullName, update);
-        }
-
-        public void UpdatePostInactivity(IRedditMonitoredPost lastVersion)
-        {
-            TimeSpan inactivityAge = lastVersion.InactivityAge + (DateTimeOffset.Now - lastVersion.FetchedAt);
-            TimeSpan age = DateTimeOffset.UtcNow - lastVersion.CreatedUTC;
-            UpdateDefinition<RedditMonitoredPostDocument> update = Builders<RedditMonitoredPostDocument>
-                                                                   .Update
-                                                                   .Set(p => p.InactivityAge, inactivityAge)
-                                                                   .Set(p => p.FetchedAt, DateTimeOffset.Now)
-                                                                   .Set(p => p.Age, age)
-                ;
-            _context.MonitoredPosts.UpdateOne(p => p.FullName == lastVersion.FullName, update);
         }
 
         public void SetFetchingAll(bool isFetching)

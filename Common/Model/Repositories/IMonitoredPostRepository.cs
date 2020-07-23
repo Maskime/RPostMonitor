@@ -11,7 +11,6 @@ namespace Common.Model.Repositories
     {
         bool Insert(IRedditPost redditMonitoredPost);
         List<IRedditMonitoredPost> FindPostToUpdate(int lastFetchOlderThanInSeconds,
-            long inactivityTimeoutInHours,
             int maxSimultaneousFetch, TimeSpan maxPostAgeInDays);
 
         long CountMonitoredPosts();
@@ -21,9 +20,7 @@ namespace Common.Model.Repositories
         void SetFetching(string fullName, bool isFetching);
 
         IRedditMonitoredPost Get(string fullName);
-
-        void UpdatePostInactivity(IRedditMonitoredPost lastVersion);
-
+        
         void SetFetchingAll(bool isFetching);
 
         List<IRedditMonitoredPost> FindAllPostAndVersions();

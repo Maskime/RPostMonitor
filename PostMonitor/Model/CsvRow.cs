@@ -84,8 +84,6 @@ namespace PostMonitor.Model
         public Uri Thumbnail { get; set; }
         [Index(32)]
         public Uri Url { get; set; }
-        [Index(32)]
-        public TimeSpan InactivityAge { get; set; }
         [Index(34)]
         public DateTimeOffset Created { get; set; }
         [Index(35)]
