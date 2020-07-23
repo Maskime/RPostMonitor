@@ -61,7 +61,6 @@ namespace DataAccess.Repositories
         }
 
         public List<IRedditMonitoredPost> FindPostToUpdate(int lastFetchOlderThanInSeconds,
-            int maxNumberOfIterations,
             long configInactivityTimeoutInHours,
             int maxSimultaneousFetch, TimeSpan maxPostAgeInDays)
         {

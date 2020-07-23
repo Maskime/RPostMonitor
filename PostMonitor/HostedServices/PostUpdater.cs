@@ -111,7 +111,6 @@ namespace PostMonitor.HostedServices
             List<IRedditMonitoredPost> postToUpdate = _repo
                 .FindPostToUpdate(
                     _config.TimeBetweenFetchInSeconds,
-                    _config.NbIterationOnPost,
                     _config.InactivityTimeoutInHours,
                     _config.SimultaneousFetchRequest, TimeSpan.FromDays(_config.MaxPostAgeInDays));
             var tasks = new List<Task<IRedditPost>>(_config.SimultaneousFetchRequest);

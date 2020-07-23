@@ -11,7 +11,6 @@ namespace Common.Model.Repositories
     {
         bool Insert(IRedditPost redditMonitoredPost);
         List<IRedditMonitoredPost> FindPostToUpdate(int lastFetchOlderThanInSeconds,
-            int maxNumberOfIterations,
             long inactivityTimeoutInHours,
             int maxSimultaneousFetch, TimeSpan maxPostAgeInDays);
 

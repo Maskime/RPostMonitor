@@ -12,12 +12,11 @@ namespace PostMonitor.Config
         /// </summary>
         public long PeriodicityInSeconds { get; set; }
 
+        /// <summary>
+        /// How long should we watch a post
+        /// </summary>
         public double MaxPostAgeInDays { get; set; }
         
-        /// <summary>
-        /// How many iteration should we do on each post.
-        /// </summary>
-        public int NbIterationOnPost { get; set; }
         /// <summary>
         /// When should we try to update a post from reddit.
         /// </summary>
