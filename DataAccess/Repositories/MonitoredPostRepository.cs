@@ -8,11 +8,9 @@ using Common.Model.Document;
 using Common.Model.Repositories;
 using Common.Reddit;
 
-using DataAccess.Config;
 using DataAccess.Documents;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using MongoDB.Driver;
 
@@ -23,30 +21,22 @@ namespace DataAccess.Repositories
         private readonly IMapper _mapper;
         private readonly ILogger<MonitoredPostRepository> _logger;
 
-        private readonly IMongoCollection<RedditMonitoredPostDocument> _posts;
-        private readonly IMongoCollection<RedditMonitoredPostVersionDocument> _postVersions;
+        private readonly IDatabaseContext _context;
 
         public MonitoredPostRepository(
-            IOptions<DatabaseSettings> settings
+            IDatabaseContext context
             , IMapper mapper
             , ILogger<MonitoredPostRepository> logger
         )
         {
-            DatabaseSettings settingsValue = settings.Value;
+            _context = context;
             _mapper = mapper;
             _logger = logger;
-            var client = new MongoClient(settingsValue.ConnectionString);
-
-            var database = client.GetDatabase(settingsValue.DatabaseName);
-
-            _posts = database.GetCollection<RedditMonitoredPostDocument>(settingsValue.MonitoredPostsCollectionName);
-            _postVersions =
-                database.GetCollection<RedditMonitoredPostVersionDocument>(settingsValue.MonitoredPostVersionsCollectionName);
         }
 
         public bool Insert(IRedditPost redditPost)
         {
-            long countDocuments = _posts.CountDocuments(p => p.FullName.Equals(redditPost.FullName));
+            long countDocuments = _context.MonitoredPosts.CountDocuments(p => p.FullName.Equals(redditPost.FullName));
             if (countDocuments > 0)
             {
                 _logger.LogWarning("Post with FullName [{}] already watched, skipping", redditPost.FullName);
@@ -56,7 +46,7 @@ namespace DataAccess.Repositories
             var document = _mapper.Map<RedditMonitoredPostDocument>(redditPost);
             document.IterationNumber = 1;
             document.Age = DateTimeOffset.UtcNow - document.CreatedUTC;
-            _posts.InsertOne(document);
+            _context.MonitoredPosts.InsertOne(document);
             return true;
         }
 
@@ -72,21 +62,21 @@ namespace DataAccess.Repositories
             TimeSpan maxInactivityAge = TimeSpan.FromHours(configInactivityTimeoutInHours);
             try
             {
-                var toUpdate = new List<IRedditMonitoredPost>(_posts
-                                                              .Find(post =>
-                                                                  post.FetchedAt <= maxLastFetch
-                                                                  //Marked as deleted
-                                                                  && !post.SelfTextHtml.Contains("SC_OFF")
-                                                                  // A flag to avoid to retrieve posts that are currently being fetched
-                                                                  && !post.IsFetching
-                                                                  // Max number of times to fetch the post.
-                                                                  && post.Age < maxPostAgeInDays
-                                                                  // Post that have been inactive for too long should not be fetched anymore.
-                                                                  && post.InactivityAge < maxInactivityAge
-                                                              )
-                                                              .Sort(sort)
-                                                              .Limit(maxSimultaneousFetch)
-                                                              .ToList())
+                var toUpdate = new List<IRedditMonitoredPost>(_context.MonitoredPosts
+                                                                      .Find(post =>
+                                                                          post.FetchedAt <= maxLastFetch
+                                                                          //Marked as deleted
+                                                                          && !post.SelfTextHtml.Contains("SC_OFF")
+                                                                          // A flag to avoid to retrieve posts that are currently being fetched
+                                                                          && !post.IsFetching
+                                                                          // Max number of times to fetch the post.
+                                                                          && post.Age < maxPostAgeInDays
+                                                                          // Post that have been inactive for too long should not be fetched anymore.
+                                                                          && post.InactivityAge < maxInactivityAge
+                                                                      )
+                                                                      .Sort(sort)
+                                                                      .Limit(maxSimultaneousFetch)
+                                                                      .ToList())
                     ;
                 return toUpdate;
             }
@@ -99,12 +89,12 @@ namespace DataAccess.Repositories
 
         public long CountMonitoredPosts()
         {
-            return _posts.CountDocuments(p => true);
+            return _context.MonitoredPosts.CountDocuments(p => true);
         }
 
         public IRedditMonitoredPost Get(string fullName)
         {
-            return _posts.Find(p => p.FullName == fullName).FirstOrDefault();
+            return _context.MonitoredPosts.Find(p => p.FullName == fullName).FirstOrDefault();
         }
 
         public void AddVersion(IRedditPost newVersion)
@@ -121,15 +111,15 @@ namespace DataAccess.Repositories
             newPostVersion.Age = postAge;
 
             newPostVersion.Id = oldVersion.Id;
-            _posts.ReplaceOne(p => p.FullName == newPostVersion.FullName, newPostVersion);
+            _context.MonitoredPosts.ReplaceOne(p => p.FullName == newPostVersion.FullName, newPostVersion);
             
-            _postVersions.InsertOne(_mapper.Map<RedditMonitoredPostVersionDocument>(oldVersion));
+            _context.MonitoredPostVersions.InsertOne(_mapper.Map<RedditMonitoredPostVersionDocument>(oldVersion));
         }
 
         public void SetFetching(string fullName, bool isFetching)
         {
             var update = Builders<RedditMonitoredPostDocument>.Update.Set(p => p.IsFetching, isFetching);
-            _posts.UpdateOne(p => p.FullName == fullName, update);
+            _context.MonitoredPosts.UpdateOne(p => p.FullName == fullName, update);
         }
 
         public void UpdatePostInactivity(IRedditMonitoredPost lastVersion)
@@ -142,32 +132,32 @@ namespace DataAccess.Repositories
                                                                    .Set(p => p.FetchedAt, DateTimeOffset.Now)
                                                                    .Set(p => p.Age, age)
                 ;
-            _posts.UpdateOne(p => p.FullName == lastVersion.FullName, update);
+            _context.MonitoredPosts.UpdateOne(p => p.FullName == lastVersion.FullName, update);
         }
 
         public void SetFetchingAll(bool isFetching)
         {
             var update = Builders<RedditMonitoredPostDocument>.Update.Set(p => p.IsFetching, isFetching);
-            _posts.UpdateMany(p => true, update);
+            _context.MonitoredPosts.UpdateMany(p => true, update);
         }
 
         public List<IRedditMonitoredPost> FindAllPostAndVersions()
         {
             var sort = Builders<RedditMonitoredPostDocument>
                        .Sort.Ascending(p => p.FullName);
-            var allPosts = _posts.Find(p => true)
-                                 .Sort(sort)
-                                 .ToList();
+            var allPosts = _context.MonitoredPosts.Find(p => true)
+                                   .Sort(sort)
+                                   .ToList();
             var versionSort = Builders<RedditMonitoredPostVersionDocument>
                               .Sort.Ascending(p => p.IterationNumber);
             var output = new List<IRedditMonitoredPost>();
             foreach (var post in allPosts)
             {
                 output.Add(post);
-                output.AddRange(_postVersions
-                                .Find(p => p.FullName.Equals(post.FullName))
-                                .Sort(versionSort)
-                                .ToList());
+                output.AddRange(_context.MonitoredPostVersions
+                                        .Find(p => p.FullName.Equals(post.FullName))
+                                        .Sort(versionSort)
+                                        .ToList());
             }
 
             return output;

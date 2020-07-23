@@ -1,11 +1,11 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 using AutoMapper;
 
 using Common.Model.Repositories;
 using Common.Reddit;
 
+using DataAccess;
 using DataAccess.Config;
 using DataAccess.RedditClient;
 using DataAccess.Repositories;
@@ -26,21 +26,9 @@ namespace PostMonitor
     {
         static async Task Main(string[] args)
         {
-            // try
-            // {
-                // Log.Information(@"Starting application");
-                await CreateHostBuilder(args)
-                      .Build()
-                      .RunAsync();
-            // }
-            // catch (Exception exception)
-            // {
-            //     Log.Error(exception, @"Application crashed");
-            // }
-            // finally
-            // {
-            //     Log.CloseAndFlush();
-            // }
+            await CreateHostBuilder(args)
+                  .Build()
+                  .RunAsync();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
@@ -59,7 +47,10 @@ namespace PostMonitor
                     
                     services.AddAutoMapper(typeof(DataAccessAutoMapperProfile), typeof(PostMonitorAutoMapperProfile));
 
+                    services.AddSingleton<IDatabaseContext, DatabaseContext>();
                     services.AddSingleton<IMonitoredPostRepository, MonitoredPostRepository>();
+                    services.AddSingleton<IWatchedSubRedditRepository, WatchedSubRedditRepository>();
+                    
                     services.AddSingleton<IRedditClientWrapper, RedditClientWrapper>();
                 })
                 .ConfigureLogging((context, logging) =>

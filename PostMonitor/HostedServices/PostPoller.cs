@@ -11,6 +11,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 
 using Common.Errors;
 using Common.Model.Repositories;
@@ -21,6 +22,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using PostMonitor.Config;
+
+using Timer = System.Timers.Timer;
 
 namespace PostMonitor.HostedServices
 {
@@ -33,6 +36,9 @@ namespace PostMonitor.HostedServices
         private readonly IRedditClientWrapper _redditClientWrapper;
         private bool _pollerStarted;
         private TimeSpan _newPostMaxAge;
+        private Timer _timer;
+        private IWatchedSubRedditRepository _watchedSubRedditRepository;
+        private TimeSpan _subRedditWatchTime;
 
         public PostPoller(
             ILogger<PostPoller> logger
@@ -40,15 +46,18 @@ namespace PostMonitor.HostedServices
             ,IOptions<PollerConfiguration> config
             ,IMonitoredPostRepository monitoredPostRepository
             ,IRedditClientWrapper redditClientWrapper
+            ,IWatchedSubRedditRepository watchedSubRedditRepository
             )
         {
             _logger = logger;
             _applicationLifetime = applicationLifetime;
             _pollerConfig = config.Value;
             _monitoredPostRepository = monitoredPostRepository;
+            _watchedSubRedditRepository = watchedSubRedditRepository;
             _redditClientWrapper = redditClientWrapper;
             _redditClientWrapper.ConnectivityUpdated += ConnectivityUpdated;
             _newPostMaxAge = TimeSpan.FromMinutes(_pollerConfig.NewPostMaxAgeInMinutes);
+            _subRedditWatchTime = TimeSpan.FromHours(_pollerConfig.SubRedditWatchTimeInHours);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -67,7 +76,34 @@ namespace PostMonitor.HostedServices
 
             _pollerStarted = true;
             _logger.LogInformation("Starting polling subreddit [{SubReddit}]", _pollerConfig.SubToWatch);
+            _timer = new Timer()
+            {
+                Enabled = true,
+                AutoReset = true,
+                Interval = TimeSpan.FromMinutes(1).TotalMilliseconds
+            };
+            var progress = new Progress<Exception>();
+            _timer.Elapsed += (sender, args) => { UpdateWatchedTime(progress, _pollerConfig.SubToWatch);};
+            progress.ProgressChanged += (sender, exception) => throw exception;
+            _watchedSubRedditRepository.UpdatedPollerStartedAt(_pollerConfig.SubToWatch);
             await _redditClientWrapper.ListenToNewPosts(_pollerConfig.SubToWatch, OnNext, OnError);
+        }
+
+        private void UpdateWatchedTime(IProgress<Exception> progress, string watchedSubReddit)
+        {
+            try
+            {
+                TimeSpan watchedTime = _watchedSubRedditRepository.UpdateSubRedditWatchedTime(watchedSubReddit);
+                if (watchedTime > _subRedditWatchTime)
+                {
+                    _timer.Enabled = false;
+                    StopPolling();
+                }
+            }
+            catch (Exception exception)
+            {
+                progress.Report(exception);
+            }
         }
 
         private void OnError(PostMonitorException obj)
@@ -85,23 +121,16 @@ namespace PostMonitor.HostedServices
             }
             if (!_monitoredPostRepository.Insert(post))
             {
-                _logger.LogWarning("For some reason, could not create the monitored post");
                 return;
             }
-            _logger.LogInformation(@"Adding post [{FullName}] to watch list [{CurrentCount}/{TargetCount}]", 
+            _logger.LogInformation(@"Adding post [{FullName}] to watch list [{CurrentCount}]", 
                 post.FullName, 
-                _monitoredPostRepository.CountMonitoredPosts(), 
-                _pollerConfig.NbPostToMonitor);
-            if (!NeedToPoll())
-            {
-                _logger.LogInformation("[OnNext]We've reached the number of post that are to be monitored, Stopping poller on this sub");
-                _redditClientWrapper.StopListeningToNewPost(_pollerConfig.SubToWatch);
-            }
+                _monitoredPostRepository.CountMonitoredPosts());
         }
 
         private bool NeedToPoll()
         {
-            return _monitoredPostRepository.CountMonitoredPosts() < _pollerConfig.NbPostToMonitor;
+            return _watchedSubRedditRepository.GetSubRedditWatchedTime(_pollerConfig.SubToWatch) < _subRedditWatchTime;
         }
 
         private void OnStopping()
