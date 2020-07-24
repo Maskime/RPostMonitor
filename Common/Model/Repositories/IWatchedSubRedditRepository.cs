@@ -9,6 +9,10 @@
 // ************************************************************************************************
 
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+using Common.Model.Document;
 
 namespace Common.Model.Repositories
 {
@@ -19,5 +23,7 @@ namespace Common.Model.Repositories
         TimeSpan UpdateSubRedditWatchedTime(string watchedSubReddit);
 
         TimeSpan GetSubRedditWatchedTime(string watchedSubReddit);
+
+        Task<List<IWatchedSubReddit>> FindAllAsync();
     }
 }

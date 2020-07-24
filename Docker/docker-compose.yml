@@ -26,12 +26,17 @@ services:
       ME_CONFIG_BASICAUTH_USERNAME: ${ME_CONFIG_BASICAUTH_USERNAME}
       ME_CONFIG_BASICAUTH_PASSWORD: ${ME_CONFIG_BASICAUTH_PASSWORD}
       
-  new-post-poller:
+  post-monitor:
     depends_on:
       - mongo
-      - mongo-express
+    build:
+      context: ..
+      dockerfile: Docker/PostMonitor.dockerfile
+      
+  web-access-point:
+    depends_on:
+      - mongo
+      - post-monitor
     build:
       context: .
-      dockerfile: Dockerfile
-    volumes:
-    - "${APP_DIR}${REDDIT_DOWNLOADS}:/RedditDownloads"
+      dockerfile: WebAccessPoint.dockerfile

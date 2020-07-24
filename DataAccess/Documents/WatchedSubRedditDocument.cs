@@ -10,12 +10,14 @@
 
 using System;
 
+using Common.Model.Document;
+
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace DataAccess.Documents
 {
-    public class WatchedSubRedditDocument
+    public class WatchedSubRedditDocument:IWatchedSubReddit
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]

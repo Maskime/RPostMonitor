@@ -9,8 +9,11 @@
 // ************************************************************************************************
 
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 using Common.Errors;
+using Common.Model.Document;
 using Common.Model.Repositories;
 
 using DataAccess.Documents;
@@ -21,7 +24,7 @@ using MongoDB.Driver;
 
 namespace DataAccess.Repositories
 {
-    public class WatchedSubRedditRepository:IWatchedSubRedditRepository
+    public class WatchedSubRedditRepository : IWatchedSubRedditRepository
     {
         private IDatabaseContext _context;
         private ILogger<WatchedSubRedditRepository> _logger;
@@ -29,7 +32,7 @@ namespace DataAccess.Repositories
         public WatchedSubRedditRepository(
             IDatabaseContext context
             , ILogger<WatchedSubRedditRepository> logger
-            )
+        )
         {
             _context = context;
             _logger = logger;
@@ -75,7 +78,8 @@ namespace DataAccess.Repositories
             WatchedSubRedditDocument document = GetWatchedSubRedditDocument(watchedSubReddit);
             if (document == null)
             {
-                throw new PostMonitorException($"Inconsistent Database state, trying to update watch time but WatchedSubRedditDocument [{watchedSubReddit}] does not exits");
+                throw new PostMonitorException(
+                    $"Inconsistent Database state, trying to update watch time but WatchedSubRedditDocument [{watchedSubReddit}] does not exits");
             }
 
             DateTime now = DateTime.UtcNow;
@@ -99,6 +103,14 @@ namespace DataAccess.Repositories
             }
 
             return document.WatchedTime;
+        }
+
+        public async Task<List<IWatchedSubReddit>> FindAllAsync()
+        {
+            IAsyncCursor<WatchedSubRedditDocument> results = await _context
+                                                                   .WatchedSubReddits
+                                                                   .FindAsync(s => true);
+            
         }
     }
 }
